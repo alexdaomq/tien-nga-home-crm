@@ -276,7 +276,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .welcome-row p { margin: 0 0 9px; color: var(--warm); font-size: 11px; font-weight: 800; letter-spacing: 1.7px; }
 .welcome-row h1 { margin: 0; font-size: clamp(30px, 3vw, 42px); font-weight: 780; line-height: 1.08; letter-spacing: -1.2px; }
 .welcome-row div > span { display: block; margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.mobile-add { display: none; }
+/* Nút "Thêm ..." hiện trên MỌI màn hình (trước đây bị ẩn trên desktop). */
+.mobile-add { display: inline-flex; background: var(--teal); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(8, 119, 29, .22); }
+.mobile-add:hover { background: #065f17; border-color: transparent; }
 
 .quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 22px; }
 .quick-stats article {
