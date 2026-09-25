@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790134142233,
+      "tag": "0000_black_mandarin",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790138123130,
+      "tag": "0001_foamy_jubilee",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790151046011,
+      "tag": "0002_absurd_spencer_smythe",
+      "breakpoints": true
+    }
+  ]
+}

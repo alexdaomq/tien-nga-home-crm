@@ -1,0 +1,19 @@
+ALTER TABLE `customers` ADD `zalo` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `project_stage` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `number_of_floors` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `number_of_bathrooms` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `estimated_tile_date` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `estimated_bathroom_install_date` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `budget_min` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `budget_max` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `interested_products` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `main_concern` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `objection` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `decision_maker` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `competitor` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `next_action_type` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `next_action_time` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `lost_note` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `lost_competitor` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `lost_at` text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE `customers` ADD `lost_by` text DEFAULT '' NOT NULL;

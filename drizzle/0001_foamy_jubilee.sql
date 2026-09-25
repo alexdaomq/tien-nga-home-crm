@@ -1,0 +1,1 @@
+ALTER TABLE `app_settings` ADD `webhook_secret` text DEFAULT '' NOT NULL;

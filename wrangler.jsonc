@@ -1,0 +1,31 @@
+{
+  // Cấu hình deploy Cloudflare Workers cho Tiến Nga Home CRM.
+  // Xem hướng dẫn từng bước ở DEPLOY-CLOUDFLARE.md.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tien-nga-home-crm",
+  "compatibility_date": "2026-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.ts",
+
+  // Tài nguyên tĩnh (ảnh, font, JS/CSS đã build) nằm ở dist/client sau khi build.
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+
+  // Cơ sở dữ liệu D1. Binding phải tên "DB" (đúng như code đang dùng).
+  // ⚠️ THAY "database_id" bằng ID thật sau khi bạn tạo D1 (xem DEPLOY-CLOUDFLARE.md, Bước 2).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tien-nga-crm",
+      "database_id": "PASTE_YOUR_D1_DATABASE_ID_HERE",
+      "migrations_dir": "drizzle"
+    }
+  ],
+
+  "cache": {
+    "enabled": true
+  }
+}

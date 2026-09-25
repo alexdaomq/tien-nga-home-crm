@@ -1,0 +1,1 @@
+ALTER TABLE `app_settings` ADD `calendar_secret` text DEFAULT '' NOT NULL;
