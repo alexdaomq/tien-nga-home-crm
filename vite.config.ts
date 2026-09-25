@@ -4,8 +4,11 @@ import { fileURLToPath } from "node:url";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
+// ID thật của D1 database "tien-nga-crm" (tạo trên Cloudflare) — dùng cho bản
+// self-host deploy thẳng lên Cloudflare Workers. Local win32/arm64 không dùng
+// nhánh cấu hình này (đã có shim sql.js), nên không ảnh hưởng chạy máy.
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
+  "da227a2f-0eb8-4d65-844a-a5d891b17f32";
 
 const { d1, r2 } = hostingConfig;
 
