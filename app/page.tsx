@@ -12,6 +12,7 @@ import CustomerDetail from "./components/CustomerDetail";
 import CustomerForm from "./components/CustomerForm";
 import NextActionModal, { NextActionPayload } from "./components/NextActionModal";
 import LostReasonModal, { LostPayload } from "./components/LostReasonModal";
+import WonModal, { WonPayload } from "./components/WonModal";
 import type { Activity, Customer, MetricsResponse, Project, Task, ViewKey } from "../lib/types";
 import { TEAM_MEMBERS, roleOf } from "../lib/types";
 import { money, formatDate, todayISO } from "../lib/format";
@@ -59,6 +60,7 @@ export default function Home() {
 
   const [na, setNa] = useState<NaState>({ open: false, customer: null, task: null, mode: "create" });
   const [lost, setLost] = useState<{ open: boolean; customer: Customer | null }>({ open: false, customer: null });
+  const [won, setWon] = useState<{ open: boolean; customer: Customer | null }>({ open: false, customer: null });
 
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: "", type: "followup", dueDate: todayISO(), dueTime: "", assignedTo: TEAM_MEMBERS[0], notes: "", customerId: null as number | null });
@@ -293,10 +295,31 @@ export default function Home() {
   async function changeStage(customer: Customer, stage: string) {
     if (stage === customer.funnelStage) return;
     if (stage === "lost") { setLost({ open: true, customer }); return; }
-    const ok = await patchCustomer(customer.id, { funnelStage: stage });
+    // Chốt đơn: bắt buộc nhập giá trị đơn hàng (mở modal).
+    if (stage === "won") { setWon({ open: true, customer }); return; }
+    // Chuyển sang "Đã đến showroom" thì đánh dấu luôn đã đến (đồng bộ dữ liệu phễu).
+    const patch: Record<string, unknown> = { funnelStage: stage };
+    if (stage === "arrived" && customer.arrived !== 1) patch.arrived = true;
+    const ok = await patchCustomer(customer.id, patch);
     if (!ok) return;
     await addActivity(customer.id, `CHUYỂN GIAI ĐOẠN: ${FUNNEL_STAGE_LABEL[stage]}`);
     setToast(`Đã chuyển sang "${FUNNEL_STAGE_LABEL[stage]}"`);
+    await refreshCore();
+  }
+
+  async function applyWon(payload: WonPayload) {
+    const customer = won.customer;
+    setWon({ open: false, customer: null });
+    if (!customer) return;
+    const ok = await patchCustomer(customer.id, {
+      funnelStage: "won",
+      value: payload.value,
+      closedDate: payload.closedDate,
+      itemCount: payload.itemCount,
+    });
+    if (!ok) return;
+    await addActivity(customer.id, `CHỐT ĐƠN: ${money(payload.value)}${payload.itemCount ? ` · ${payload.itemCount} món` : ""}${payload.note ? ` · ${payload.note}` : ""}`);
+    setToast("Đã chốt đơn 🎉");
     await refreshCore();
   }
 
@@ -488,6 +511,8 @@ export default function Home() {
       />
 
       <LostReasonModal open={lost.open} customerName={lost.customer?.fullName} onSubmit={applyLost} onClose={() => setLost({ open: false, customer: null })} />
+
+      <WonModal open={won.open} customer={won.customer} onSubmit={applyWon} onClose={() => setWon({ open: false, customer: null })} />
 
       {showTaskForm && (
         <div className="modal-overlay">
