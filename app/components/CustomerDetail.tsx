@@ -55,6 +55,11 @@ const PRODUCT_GROUPS = [
 
 const SOLD_STAGES = new Set(["won", "delivering", "aftercare"]);
 
+// Bật/tắt mục upload tài liệu. Tạm TẮT vì chưa bật kho R2 trên Cloudflare.
+// Khi đã bật R2 (tạo bucket tien-nga-files + hosting.json r2="FILES" + migration 0004),
+// đổi thành true để hiện lại.
+const DOCS_ENABLED = false;
+
 function parseProducts(raw: string): string[] {
   if (!raw) return [];
   try {
@@ -92,6 +97,7 @@ export default function CustomerDetail(props: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!DOCS_ENABLED) return;
     let active = true;
     fetch(`/api/documents?customerId=${customer.id}`)
       .then((res) => res.json())
@@ -261,7 +267,8 @@ export default function CustomerDetail(props: Props) {
           </div>
         </div>
 
-        {/* Báo giá & tài liệu đã gửi khách */}
+        {/* Báo giá & tài liệu đã gửi khách — tạm ẩn tới khi bật kho R2 */}
+        {DOCS_ENABLED && (
         <div className="cd-section">
           <div className="cd-section-title">Báo giá &amp; tài liệu đã gửi</div>
           {docs.length > 0 && (
@@ -299,6 +306,7 @@ export default function CustomerDetail(props: Props) {
             <button type="submit" className="save-button" disabled={uploading}>{uploading ? "Đang tải lên..." : "＋ Tải tài liệu lên"}</button>
           </form>
         </div>
+        )}
 
         {/* Lịch sử chăm sóc */}
         <div className="cd-section">
