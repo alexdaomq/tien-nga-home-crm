@@ -94,7 +94,11 @@ export async function GET() {
     const db = getDb();
     let rows = await db.select().from(customers).orderBy(desc(customers.updatedAt), desc(customers.id)).limit(1000);
     if (rows.length === 0) {
-      await db.insert(customers).values(buildSeedCustomers());
+      // Cloudflare D1 giới hạn 100 tham số/câu lệnh — chèn từng khách một (mỗi
+      // dòng ~54 tham số) thay vì 1 câu insert lớn (sẽ vượt giới hạn và lỗi).
+      for (const seedRow of buildSeedCustomers()) {
+        await db.insert(customers).values(seedRow);
+      }
       // Mô phỏng 1 khách HOT "nguy cơ mất" (>48h không tương tác) để test cờ cảnh báo.
       await db
         .update(customers)
