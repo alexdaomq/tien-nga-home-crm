@@ -24,6 +24,11 @@ type FbMetrics = {
   spend: number; impressions: number; reach: number; clicks: number;
   cpc: number; ctr: number; cpm: number; frequency: number;
   results: number; costPerResult: number;
+  messaging: number; inlineLinkClicks: number; costPerLinkClick: number;
+};
+type FbCampaign = {
+  name: string; spend: number; reach: number; impressions: number;
+  clicks: number; ctr: number; results: number; costPerResult: number;
 };
 
 const FB_ADS_MANAGER_URL = "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1378071637200779&business_id=1695978451198571";
@@ -82,6 +87,7 @@ export default function MetricsView({
   const [fbEditToken, setFbEditToken] = useState(false);
   const [fbPreset, setFbPreset] = useState("last_30d");
   const [fbMetrics, setFbMetrics] = useState<FbMetrics | null>(null);
+  const [fbCampaigns, setFbCampaigns] = useState<FbCampaign[]>([]);
   const [fbLoading, setFbLoading] = useState(false);
   const [fbError, setFbError] = useState("");
   const [fbSaving, setFbSaving] = useState(false);
@@ -114,8 +120,9 @@ export default function MetricsView({
     const res = await fetch(`/api/ads/insights?preset=${preset}`);
     const data = await res.json();
     setFbLoading(false);
-    if (!res.ok) { setFbMetrics(null); setFbError(data.error ?? "Không tải được số liệu."); return; }
+    if (!res.ok) { setFbMetrics(null); setFbCampaigns([]); setFbError(data.error ?? "Không tải được số liệu."); return; }
     setFbMetrics(data.metrics ?? null);
+    setFbCampaigns(Array.isArray(data.campaigns) ? data.campaigns : []);
   }
 
   async function saveFbConfig() {
@@ -278,8 +285,29 @@ export default function MetricsView({
                 <div className="kpi-card"><span>CTR</span><strong>{fbMetrics.ctr.toFixed(2)}%</strong></div>
                 <div className="kpi-card"><span>CPM</span><strong>{money(fbMetrics.cpm)}</strong></div>
                 <div className="kpi-card"><span>Tần suất</span><strong>{fbMetrics.frequency.toFixed(2)}</strong></div>
+                <div className="kpi-card"><span>Bắt đầu trò chuyện</span><strong>{fbMetrics.messaging.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>Lượt nhấp liên kết</span><strong>{fbMetrics.inlineLinkClicks.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>CPC liên kết</span><strong>{money(fbMetrics.costPerLinkClick)}</strong></div>
               </div>
             ) : !fbLoading && !fbError ? <div className="empty-state"><strong>Chưa có số liệu trong khoảng này.</strong></div> : null}
+
+            {fbCampaigns.length > 0 && (
+              <div className="fb-campaigns">
+                <div className="fb-campaigns-title">Chi tiết theo chiến dịch</div>
+                <div className="fb-campaigns-scroll">
+                  <div className="fb-campaigns-head"><span>Chiến dịch</span><span>Chi tiêu</span><span>Kết quả</span><span>Chi phí/KQ</span><span>Tiếp cận</span></div>
+                  {fbCampaigns.map((c, i) => (
+                    <div key={i} className="fb-campaigns-row">
+                      <span className="fb-camp-name" title={c.name}>{c.name}</span>
+                      <span>{money(c.spend)}</span>
+                      <span>{c.results.toLocaleString("vi-VN")}</span>
+                      <span>{c.costPerResult ? money(c.costPerResult) : "—"}</span>
+                      <span>{c.reach.toLocaleString("vi-VN")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
