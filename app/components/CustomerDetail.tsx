@@ -33,6 +33,26 @@ type Props = {
   onDelete: (customer: Customer) => void;
 };
 
+// 6 bước hành trình bán hàng Tiến Nga (gom từ 9 stage pipeline).
+const JOURNEY = [
+  { label: "Nhận biết", stages: ["lead"] },
+  { label: "Tư vấn", stages: ["consulting", "appointment", "arrived"] },
+  { label: "Chốt đơn", stages: ["site_survey", "quoted", "negotiating"] },
+  { label: "Giao đơn đầu", stages: ["won", "delivering"] },
+  { label: "Bán tiếp", stages: ["aftercare"] },
+  { label: "Sau bán", stages: [] },
+];
+
+// 4 nhóm hàng chính để theo dõi lộ trình bán chéo trên từng khách.
+const PRODUCT_GROUPS = [
+  { label: "Gạch ốp lát", items: ["Gạch lát nền", "Gạch ốp tường"] },
+  { label: "Thiết bị vệ sinh", items: ["Bồn cầu", "Lavabo", "Bình nóng lạnh"] },
+  { label: "Sen vòi & phụ kiện", items: ["Sen tắm", "Vòi", "Gương", "Phụ kiện"] },
+  { label: "Bếp & thiết bị bếp", items: ["Bếp"] },
+];
+
+const SOLD_STAGES = new Set(["won", "delivering", "aftercare"]);
+
 function parseProducts(raw: string): string[] {
   if (!raw) return [];
   try {
@@ -43,22 +63,48 @@ function parseProducts(raw: string): string[] {
   }
 }
 
+function journeyIndexOf(stage: string): number {
+  return JOURNEY.findIndex((phase) => phase.stages.includes(stage));
+}
+
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length === 0) return "?";
+  const first = words[0][0] ?? "";
+  const last = words.length > 1 ? words[words.length - 1][0] ?? "" : "";
+  return (first + last).toLocaleUpperCase("vi");
+}
+
 export default function CustomerDetail(props: Props) {
   const { customer, activities, tasks, projects, onClose, onEdit, onAddNote, onCompleteNextAction, onEditNextAction, onCreateNextAction, onChangeStage, onRequestLost, onDelete } = props;
   const [note, setNote] = useState("");
+  const [showMore, setShowMore] = useState(false);
 
   const flags = useMemo(() => computeCustomerFlags(customer, tasks, todayISO(), Date.now()), [customer, tasks]);
   const products = useMemo(() => parseProducts(customer.interestedProducts), [customer.interestedProducts]);
   const phoneDigits = customer.phone.replace(/\s/g, "");
   const hasNext = Boolean(customer.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate));
   const nextOverdue = hasNext && customer.nextContactDate < todayISO();
+  const currentPhase = journeyIndexOf(customer.funnelStage);
+  const isOffTrack = customer.funnelStage === "lost" || customer.funnelStage === "paused";
+  const isSold = SOLD_STAGES.has(customer.funnelStage);
+
+  const roadmap = useMemo(
+    () =>
+      PRODUCT_GROUPS.map((group) => {
+        const wanted = group.items.some((item) => products.includes(item));
+        const status = wanted ? (isSold ? "done" : "active") : "todo";
+        return { label: group.label, status };
+      }),
+    [products, isSold],
+  );
 
   const warnings: string[] = [];
   if (flags.overdueTaskCount > 0) warnings.push(`Có ${flags.overdueTaskCount} việc quá hạn`);
-  if (flags.isHotAtRisk) warnings.push("KHÁCH HOT >48H KHÔNG TƯƠNG TÁC — NGUY CƠ MẤT KHÁCH");
-  if (flags.quoteNeedsFollowUp) warnings.push("ĐÃ BÁO GIÁ >24H — CẦN FOLLOW BÁO GIÁ");
-  if (flags.showroomToday) warnings.push("LỊCH SHOWROOM HÔM NAY");
-  if (flags.siteVisitToday) warnings.push("LỊCH CÔNG TRÌNH HÔM NAY");
+  if (flags.isHotAtRisk) warnings.push("Khách HOT >48h không tương tác — nguy cơ mất khách");
+  if (flags.quoteNeedsFollowUp) warnings.push("Đã báo giá >24h — cần follow báo giá");
+  if (flags.showroomToday) warnings.push("Lịch showroom hôm nay");
+  if (flags.siteVisitToday) warnings.push("Lịch công trình hôm nay");
 
   function submitNote(event: FormEvent) {
     event.preventDefault();
@@ -72,14 +118,16 @@ export default function CustomerDetail(props: Props) {
       <div className="customer-drawer">
         <button className="close-button" onClick={onClose}>×</button>
 
-        <div className="drawer-title">
-          <div>
-            <h2>{customer.fullName}</h2>
-            <span>{customer.phone}{customer.leadCode ? ` · ${customer.leadCode}` : ""}</span>
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <span className="status-pill" style={{ ["--status" as string]: FUNNEL_STAGE_COLOR[customer.funnelStage] }}>{FUNNEL_STAGE_LABEL[customer.funnelStage]}</span>
-            <span className="temp-pill" style={{ ["--temp" as string]: PRIORITY_COLOR[customer.priority] }}>{PRIORITY_EMOJI[customer.priority]} {PRIORITY_LABEL[customer.priority]}</span>
+        {/* Header liên hệ nhanh */}
+        <div className="cd-head">
+          <div className="cd-avatar">{initialsOf(customer.fullName)}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="cd-name-row">
+              <h2>{customer.fullName}</h2>
+              <span className="temp-pill" style={{ ["--temp" as string]: PRIORITY_COLOR[customer.priority] }}>{PRIORITY_EMOJI[customer.priority]} {PRIORITY_LABEL[customer.priority]}</span>
+            </div>
+            <div className="cd-sub">{customer.phone}{customer.ward ? ` · ${customer.ward}` : ""}</div>
+            <div className="cd-source">{customer.source}{customer.campaign ? ` — ${customer.campaign}` : ""}</div>
           </div>
         </div>
 
@@ -87,7 +135,26 @@ export default function CustomerDetail(props: Props) {
           <a className="qa-btn call" href={`tel:${phoneDigits}`}>📞 Gọi</a>
           <a className="qa-btn zalo" href={`https://zalo.me/${phoneDigits}`} target="_blank" rel="noreferrer">💬 Zalo</a>
           <button className="qa-btn" onClick={() => onEdit(customer)}>✎ Sửa</button>
-          <button className="qa-btn" onClick={() => onCreateNextAction(customer)}>＋ Việc tiếp theo</button>
+        </div>
+
+        {/* Thanh hành trình 6 bước */}
+        <div className="journey">
+          <div className="journey-label">Hành trình khách</div>
+          {isOffTrack ? (
+            <div className="journey-off">{FUNNEL_STAGE_LABEL[customer.funnelStage]}</div>
+          ) : (
+            <div className="journey-steps">
+              {JOURNEY.map((phase, index) => {
+                const state = index < currentPhase ? "done" : index === currentPhase ? "current" : "todo";
+                return (
+                  <div key={phase.label} className={`journey-step ${state}`}>
+                    <div className="journey-bar" />
+                    <span>{phase.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {warnings.length > 0 && (
@@ -96,7 +163,7 @@ export default function CustomerDetail(props: Props) {
           </div>
         )}
 
-        {/* KHỐI NỔI BẬT NHẤT: VIỆC TIẾP THEO */}
+        {/* Việc tiếp theo — nổi bật nhất */}
         {hasNext ? (
           <div className={`next-action-block${nextOverdue ? " overdue" : ""}`}>
             <div className="nab-label">VIỆC TIẾP THEO {nextOverdue ? "· QUÁ HẠN" : ""}</div>
@@ -117,76 +184,38 @@ export default function CustomerDetail(props: Props) {
           </div>
         )}
 
-        {/* Đổi giai đoạn pipeline */}
-        <div className="detail-block">
-          <div className="detail-block-title">Giai đoạn pipeline</div>
-          <div className="stage-changer">
-            {PIPELINE_STAGES.map((stage) => (
-              <button
-                key={stage}
-                className={customer.funnelStage === stage ? "active" : ""}
-                style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[stage] }}
-                onClick={() => onChangeStage(customer, stage)}
-              >
-                {FUNNEL_STAGE_LABEL[stage]}
-              </button>
+        {/* Khách cần gì */}
+        <div className="cd-section">
+          <div className="cd-section-title">Khách cần gì</div>
+          {products.length > 0 && <div className="chip-row" style={{ marginBottom: 10 }}>{products.map((p) => <span key={p} className="chip">{p}</span>)}</div>}
+          <div className="cd-need-grid">
+            <div className="cd-need-cell"><span>Ngân sách</span><strong>{customer.budgetMin || customer.budgetMax ? `${money(customer.budgetMin)} – ${money(customer.budgetMax)}` : "Chưa rõ"}</strong></div>
+            <div className="cd-need-cell"><span>Giai đoạn công trình</span><strong>{PROJECT_STAGE_LABEL[customer.projectStage] ?? "Chưa rõ"}</strong></div>
+            <div className="cd-need-cell"><span>Giá trị cơ hội</span><strong>{money(customer.value)}</strong></div>
+            <div className="cd-need-cell"><span>Nhu cầu</span><strong>{customer.need || "Chưa ghi nhận"}</strong></div>
+          </div>
+        </div>
+
+        {/* Lộ trình sản phẩm — bán tiếp */}
+        <div className="cd-section">
+          <div className="cd-section-title">Lộ trình sản phẩm (bán tiếp)</div>
+          <div className="roadmap">
+            {roadmap.map((group) => (
+              <div key={group.label} className={`roadmap-row ${group.status}`}>
+                <span className="roadmap-dot" />
+                <span className="roadmap-name">{group.label}</span>
+                <span className="roadmap-status">
+                  {group.status === "done" ? (isSold ? "Đã bán / đã chốt" : "Đã có nhu cầu") : group.status === "active" ? "Đang quan tâm" : "Gợi ý bán thêm"}
+                </span>
+              </div>
             ))}
-            <button className="off" onClick={() => onChangeStage(customer, "paused")}>Tạm hoãn</button>
-            <button className="off danger" onClick={() => onRequestLost(customer)}>Mất khách</button>
           </div>
         </div>
 
-        {customer.funnelStage === "lost" && (
-          <div className="warn-banner detail">
-            <div>Lý do mất: <strong>{LOSS_REASON_LABEL[customer.lossReason] ?? customer.lossReason}</strong></div>
-            {customer.lostCompetitor ? <div>Đối thủ: {customer.lostCompetitor}</div> : null}
-            {customer.lostNote ? <div>Ghi chú: {customer.lostNote}</div> : null}
-          </div>
-        )}
-
-        <div className="detail-grid">
-          <Field label="Khu vực" value={customer.ward || "—"} />
-          <Field label="Nguồn" value={customer.source + (customer.campaign ? ` · ${customer.campaign}` : "")} />
-          <Field label="Nhu cầu" value={customer.need || "Chưa ghi nhận"} />
-          <Field label="Loại công trình" value={PROJECT_TYPE_LABEL[customer.projectType] ?? customer.projectType ?? "—"} />
-          <Field label="Giai đoạn thi công" value={PROJECT_STAGE_LABEL[customer.projectStage] ?? "—"} />
-          <Field label="Số WC / tầng" value={`${customer.numberOfBathrooms || "—"} WC · ${customer.numberOfFloors || "—"} tầng`} />
-          <Field label="Giá trị cơ hội" value={money(customer.value)} />
-          <Field label="Ngân sách" value={customer.budgetMin || customer.budgetMax ? `${money(customer.budgetMin)} – ${money(customer.budgetMax)}` : "—"} />
-          <Field label="Người quyết định" value={customer.decisionMaker || "—"} />
-          <Field label="Phản đối chính" value={OBJECTION_LABEL[customer.objection] ?? "—"} />
-          <Field label="Đối thủ" value={customer.competitor || "—"} />
-          <Field label="Ngày chốt dự kiến" value={formatDate(customer.expectedCloseDate)} />
-        </div>
-
-        {products.length > 0 && (
-          <div className="detail-block">
-            <div className="detail-block-title">Sản phẩm quan tâm</div>
-            <div className="chip-row">{products.map((p) => <span key={p} className="chip">{p}</span>)}</div>
-          </div>
-        )}
-
-        {customer.mainConcern ? (
-          <div className="detail-block"><div className="detail-block-title">Băn khoăn lớn nhất</div><p style={{ margin: 0, fontSize: 13 }}>{customer.mainConcern}</p></div>
-        ) : null}
-
-        {projects.length > 0 && (
-          <div className="detail-block">
-            <div className="detail-block-title">Công trình liên kết</div>
-            <div style={{ display: "grid", gap: 6 }}>
-              {projects.map((project) => (
-                <div key={project.id} style={{ fontSize: 12, padding: 8, border: "1px solid var(--line)", borderRadius: 10 }}>
-                  <strong>{project.projectCode}</strong> · {money(project.lifetimeValue)} đã mua tại Tiến Nga
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Timeline */}
-        <div className="activity-section">
-          <h3>Lịch sử tương tác</h3>
-          <form onSubmit={submitNote} style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        {/* Lịch sử chăm sóc */}
+        <div className="cd-section">
+          <div className="cd-section-title">Lịch sử chăm sóc</div>
+          <form onSubmit={submitNote} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input placeholder="Ghi lại cuộc gọi / tin nhắn vừa thực hiện..." value={note} onChange={(e) => setNote(e.target.value)} style={{ flex: 1 }} />
             <button type="submit" className="save-button" style={{ width: "auto" }}>Lưu</button>
           </form>
@@ -207,9 +236,65 @@ export default function CustomerDetail(props: Props) {
           </div>
         </div>
 
-        <div style={{ marginTop: 20, textAlign: "right" }}>
-          <button className="hub-delete-button" onClick={() => onDelete(customer)}>Xoá khách hàng</button>
-        </div>
+        {/* Chi tiết thêm — thu gọn */}
+        <button className="cd-more-toggle" onClick={() => setShowMore((v) => !v)}>
+          {showMore ? "▲ Thu gọn chi tiết" : "▼ Chi tiết thêm (giai đoạn, đối thủ, người quyết định...)"}
+        </button>
+
+        {showMore && (
+          <div className="cd-more">
+            <div className="cd-section-title">Đổi giai đoạn pipeline</div>
+            <div className="stage-changer">
+              {PIPELINE_STAGES.map((stage) => (
+                <button key={stage} className={customer.funnelStage === stage ? "active" : ""} style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[stage] }} onClick={() => onChangeStage(customer, stage)}>
+                  {FUNNEL_STAGE_LABEL[stage]}
+                </button>
+              ))}
+              <button className="off" onClick={() => onChangeStage(customer, "paused")}>Tạm hoãn</button>
+              <button className="off danger" onClick={() => onRequestLost(customer)}>Mất khách</button>
+            </div>
+
+            {customer.funnelStage === "lost" && (
+              <div className="warn-banner detail" style={{ marginTop: 12 }}>
+                <div>Lý do mất: <strong>{LOSS_REASON_LABEL[customer.lossReason] ?? customer.lossReason}</strong></div>
+                {customer.lostCompetitor ? <div>Đối thủ: {customer.lostCompetitor}</div> : null}
+                {customer.lostNote ? <div>Ghi chú: {customer.lostNote}</div> : null}
+              </div>
+            )}
+
+            <div className="detail-grid" style={{ marginTop: 14 }}>
+              <Field label="Loại công trình" value={PROJECT_TYPE_LABEL[customer.projectType] ?? customer.projectType ?? "—"} />
+              <Field label="Số WC / tầng" value={`${customer.numberOfBathrooms || "—"} WC · ${customer.numberOfFloors || "—"} tầng`} />
+              <Field label="Người quyết định" value={customer.decisionMaker || "—"} />
+              <Field label="Phản đối chính" value={OBJECTION_LABEL[customer.objection] ?? "—"} />
+              <Field label="Đối thủ" value={customer.competitor || "—"} />
+              <Field label="Ngày chốt dự kiến" value={formatDate(customer.expectedCloseDate)} />
+              <Field label="Ngày lát gạch dự kiến" value={formatDate(customer.estimatedTileDate)} />
+              <Field label="Ngày lắp TBVS dự kiến" value={formatDate(customer.estimatedBathroomInstallDate)} />
+            </div>
+
+            {customer.mainConcern ? (
+              <div style={{ marginTop: 6 }}><div className="cd-section-title">Băn khoăn lớn nhất</div><p style={{ margin: 0, fontSize: 13 }}>{customer.mainConcern}</p></div>
+            ) : null}
+
+            {projects.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div className="cd-section-title">Công trình liên kết</div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {projects.map((project) => (
+                    <div key={project.id} style={{ fontSize: 12, padding: 8, border: "1px solid var(--line)", borderRadius: 10 }}>
+                      <strong>{project.projectCode}</strong> · {money(project.lifetimeValue)} đã mua tại Tiến Nga
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: 16, textAlign: "right" }}>
+              <button className="hub-delete-button" onClick={() => onDelete(customer)}>Xoá khách hàng</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
