@@ -10,6 +10,23 @@ import { deriveCalendarToken } from "../../lib/calendar-feed";
 const CALENDAR_PEOPLE = ["all", ...TEAM_MEMBERS] as const;
 const CALENDAR_PEOPLE_LABEL: Record<string, string> = { all: "Toàn đội (Tuấn xem hết)" };
 
+const FB_PRESETS: { value: string; label: string }[] = [
+  { value: "today", label: "Hôm nay" },
+  { value: "yesterday", label: "Hôm qua" },
+  { value: "last_7d", label: "7 ngày qua" },
+  { value: "last_30d", label: "30 ngày qua" },
+  { value: "this_month", label: "Tháng này" },
+  { value: "last_month", label: "Tháng trước" },
+];
+
+type FbMetrics = {
+  spend: number; impressions: number; reach: number; clicks: number;
+  cpc: number; ctr: number; cpm: number; frequency: number;
+  results: number; costPerResult: number;
+};
+
+const FB_ADS_MANAGER_URL = "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1378071637200779&business_id=1695978451198571";
+
 export default function MetricsView({
   metrics,
   person,
@@ -29,6 +46,51 @@ export default function MetricsView({
   const [webhookEndpoint, setWebhookEndpoint] = useState("/api/customers/webhook");
   const [showSecret, setShowSecret] = useState(false);
   const [calendarLinks, setCalendarLinks] = useState<Record<string, string>>({});
+
+  // Kết nối quảng cáo Facebook
+  const [fbAccountId, setFbAccountId] = useState("1378071637200779");
+  const [fbHasToken, setFbHasToken] = useState(false);
+  const [fbToken, setFbToken] = useState("");
+  const [fbEditToken, setFbEditToken] = useState(false);
+  const [fbPreset, setFbPreset] = useState("last_30d");
+  const [fbMetrics, setFbMetrics] = useState<FbMetrics | null>(null);
+  const [fbLoading, setFbLoading] = useState(false);
+  const [fbError, setFbError] = useState("");
+  const [fbSaving, setFbSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/ads").then((res) => res.json()).then((data) => {
+      if (data.adAccountId) setFbAccountId(String(data.adAccountId).replace(/^act_/, ""));
+      setFbHasToken(Boolean(data.hasToken));
+      if (data.hasToken) loadFbInsights("last_30d");
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadFbInsights(preset: string) {
+    setFbLoading(true);
+    setFbError("");
+    const res = await fetch(`/api/ads/insights?preset=${preset}`);
+    const data = await res.json();
+    setFbLoading(false);
+    if (!res.ok) { setFbMetrics(null); setFbError(data.error ?? "Không tải được số liệu."); return; }
+    setFbMetrics(data.metrics ?? null);
+  }
+
+  async function saveFbConfig() {
+    setFbSaving(true);
+    setFbError("");
+    const body: Record<string, unknown> = { adAccountId: fbAccountId };
+    if (fbToken.trim()) body.accessToken = fbToken.trim();
+    const res = await fetch("/api/ads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    setFbSaving(false);
+    if (!res.ok) { setFbError(data.error ?? "Không lưu được kết nối."); return; }
+    setFbHasToken(Boolean(data.hasToken));
+    setFbToken("");
+    setFbEditToken(false);
+    onToast("Đã lưu kết nối Facebook");
+    if (data.hasToken) await loadFbInsights(fbPreset);
+  }
 
   async function buildCalendarLinks(secret: string) {
     if (!secret) { setCalendarLinks({}); return; }
@@ -102,6 +164,67 @@ export default function MetricsView({
       <section className="welcome-row">
         <div><p>CHỈ SỐ VẬN HÀNH</p><h1>Nhập chi ads & 8 chỉ số phễu B2C</h1><span>Chỉ chi ads cần nhập tay mỗi ngày — các chỉ số còn lại tính thẳng từ dữ liệu khách hàng của tháng {metrics?.month ?? ""}.</span></div>
       </section>
+
+      <div className="map-card fb-ads-card">
+        <div className="dashboard-card-title">
+          <strong>📊 Quảng cáo Facebook</strong>
+          <a href={FB_ADS_MANAGER_URL} target="_blank" rel="noreferrer" className="outline-button" style={{ width: "auto", textDecoration: "none" }}>Mở Trình quản lý QC ↗</a>
+        </div>
+
+        {(!fbHasToken || fbEditToken) ? (
+          <div style={{ padding: 16, display: "grid", gap: 10 }}>
+            <p style={{ fontSize: 12, color: "#647572", margin: 0 }}>Dán mã tài khoản quảng cáo và access token để kéo số liệu thật từ Facebook về. Token lưu an toàn trong hệ thống, không hiển thị lại.</p>
+            <label style={{ display: "grid", gap: 4, fontSize: 12 }}>Mã tài khoản quảng cáo (act_...)
+              <input value={fbAccountId} onChange={(e) => setFbAccountId(e.target.value)} placeholder="VD: 1378071637200779" style={{ fontFamily: "monospace" }} />
+            </label>
+            <label style={{ display: "grid", gap: 4, fontSize: 12 }}>Access token {fbHasToken ? "(để trống nếu giữ token cũ)" : ""}
+              <input type="password" value={fbToken} onChange={(e) => setFbToken(e.target.value)} placeholder="Dán access token Facebook" style={{ fontFamily: "monospace" }} />
+            </label>
+            {fbError ? <div className="warn-banner" style={{ padding: "8px 12px" }}>{fbError}</div> : null}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="save-button" style={{ width: "auto" }} onClick={saveFbConfig} disabled={fbSaving}>{fbSaving ? "Đang lưu..." : "Lưu & kết nối"}</button>
+              {fbEditToken ? <button className="outline-button" style={{ width: "auto" }} onClick={() => { setFbEditToken(false); setFbError(""); }}>Huỷ</button> : null}
+            </div>
+            <details style={{ fontSize: 11, color: "#647572" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#41625b" }}>Cách lấy access token (mở để xem)</summary>
+              <ol style={{ paddingLeft: 18, marginTop: 8, display: "grid", gap: 4 }}>
+                <li>Mở <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer">Graph API Explorer</a>, đăng nhập Facebook.</li>
+                <li>Bấm "Add a Permission" → chọn quyền <code>ads_read</code>.</li>
+                <li>Bấm "Generate Access Token", đồng ý cấp quyền.</li>
+                <li>Sao chép token dán vào ô trên. (Token này ngắn hạn ~1 giờ để thử; muốn dùng lâu dài tôi sẽ hướng dẫn tạo token vĩnh viễn qua System User.)</li>
+              </ol>
+            </details>
+          </div>
+        ) : (
+          <div style={{ padding: 16, display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <select value={fbPreset} onChange={(e) => { setFbPreset(e.target.value); loadFbInsights(e.target.value); }} style={{ width: "auto" }}>
+                {FB_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+              <button className="outline-button" style={{ width: "auto" }} onClick={() => loadFbInsights(fbPreset)} disabled={fbLoading}>{fbLoading ? "Đang tải..." : "↻ Tải lại"}</button>
+              <span style={{ flex: 1 }} />
+              <button className="outline-button" style={{ width: "auto", fontSize: 11 }} onClick={() => setFbEditToken(true)}>Đổi token / tài khoản</button>
+            </div>
+            {fbError ? <div className="warn-banner" style={{ padding: "8px 12px" }}>{fbError}</div> : null}
+            {fbMetrics ? (
+              <div className="fb-metrics-grid">
+                <div className="kpi-card"><span>Chi tiêu</span><strong>{money(fbMetrics.spend)}</strong></div>
+                <div className="kpi-card"><span>Kết quả (tin nhắn/lead)</span><strong>{fbMetrics.results.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>Chi phí / kết quả</span><strong>{money(fbMetrics.costPerResult)}</strong></div>
+                <div className="kpi-card"><span>Tiếp cận</span><strong>{fbMetrics.reach.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>Hiển thị</span><strong>{fbMetrics.impressions.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>Lượt click</span><strong>{fbMetrics.clicks.toLocaleString("vi-VN")}</strong></div>
+                <div className="kpi-card"><span>CPC (giá/click)</span><strong>{money(fbMetrics.cpc)}</strong></div>
+                <div className="kpi-card"><span>CTR</span><strong>{fbMetrics.ctr.toFixed(2)}%</strong></div>
+                <div className="kpi-card"><span>CPM (giá/1000 hiển thị)</span><strong>{money(fbMetrics.cpm)}</strong></div>
+                <div className="kpi-card"><span>Tần suất</span><strong>{fbMetrics.frequency.toFixed(2)}</strong></div>
+              </div>
+            ) : !fbLoading && !fbError ? (
+              <div className="empty-state"><strong>Chưa có số liệu trong khoảng này.</strong></div>
+            ) : null}
+          </div>
+        )}
+      </div>
 
       <div className="dashboard-grid">
         <div className="map-card">

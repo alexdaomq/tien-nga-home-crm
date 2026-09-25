@@ -1397,6 +1397,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .journey-step span { font-size: 9.5px; }
 }
 
+/* Quảng cáo Facebook trong Báo cáo */
+.fb-ads-card { margin-bottom: 18px; }
+.fb-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.fb-metrics-grid .kpi-card { margin: 0; }
+
 /* Tài liệu / báo giá đã gửi */
 .doc-list { display: grid; gap: 8px; margin-bottom: 12px; }
 .doc-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdfa; }

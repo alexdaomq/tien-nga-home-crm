@@ -189,6 +189,9 @@ export const appSettings = sqliteTable("app_settings", {
   marginRate: integer("margin_rate").notNull().default(25),
   webhookSecret: text("webhook_secret").notNull().default(""),
   calendarSecret: text("calendar_secret").notNull().default(""),
+  // Kết nối Trình quản lý quảng cáo Facebook (Marketing API) — token do người dùng dán vào.
+  fbAdAccountId: text("fb_ad_account_id").notNull().default(""),
+  fbAccessToken: text("fb_access_token").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
