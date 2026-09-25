@@ -474,7 +474,7 @@ export default function Home() {
         ) : view === "completed" ? (
           <CompletedBoard tasks={visibleTasks} />
         ) : view === "metrics" ? (
-          <MetricsView metrics={metrics} person={person} onToast={setToast} onRefresh={fetchMetrics} />
+          <MetricsView metrics={metrics} customers={visibleCustomers} person={person} onToast={setToast} onRefresh={fetchMetrics} />
         ) : view === "settings" ? (
           <Settings role={role} restrictByOwner={restrictByOwner} onToggleRestrict={chooseRestrict} />
         ) : (
