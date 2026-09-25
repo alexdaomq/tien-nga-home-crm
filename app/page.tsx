@@ -461,7 +461,7 @@ export default function Home() {
 
       {selected && (
         <CustomerDetail
-          customer={selected} activities={activities} tasks={selectedTasks} projects={customerProjects}
+          customer={selected} activities={activities} tasks={selectedTasks} projects={customerProjects} person={person}
           onClose={() => setSelected(null)}
           onEdit={(c) => { setFormCustomer(c); setFormMode("edit"); }}
           onAddNote={async (text) => { const ok = await addActivity(selected.id, text); if (ok) { setToast("Đã lưu tương tác"); await refreshCore(); } }}

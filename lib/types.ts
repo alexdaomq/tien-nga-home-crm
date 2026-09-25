@@ -124,6 +124,20 @@ export type Activity = {
   createdAt: string;
 };
 
+export type Document = {
+  id: number;
+  customerId: number;
+  docType: string;
+  fileName: string;
+  contentType: string;
+  r2Key: string;
+  size: number;
+  amount: number;
+  note: string;
+  uploadedBy: string;
+  createdAt: string;
+};
+
 export type DailyMetric = {
   id: number;
   date: string;

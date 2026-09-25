@@ -127,6 +127,43 @@ function makeD1Shim(sqlite: Database) {
   };
 }
 
+// Kho R2 giả lập cục bộ: lưu file xuống .local-data/r2/ (chỉ dùng khi dev trên máy
+// không có runtime Cloudflare thật). Mô phỏng đủ put/get/delete mà route documents dùng.
+const R2_DIR = path.join(process.cwd(), ".local-data", "r2");
+function r2PathFor(key: string) {
+  return path.join(R2_DIR, key.replace(/[^a-zA-Z0-9._-]/g, "_"));
+}
+function makeR2Shim() {
+  fs.mkdirSync(R2_DIR, { recursive: true });
+  return {
+    async put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: { contentType?: string } }) {
+      const filePath = r2PathFor(key);
+      const buffer = Buffer.from(value as ArrayBuffer);
+      fs.writeFileSync(filePath, buffer);
+      fs.writeFileSync(filePath + ".meta", JSON.stringify({ contentType: options?.httpMetadata?.contentType ?? "", size: buffer.length }));
+      return { key, size: buffer.length };
+    },
+    async get(key: string) {
+      const filePath = r2PathFor(key);
+      if (!fs.existsSync(filePath)) return null;
+      const buffer = fs.readFileSync(filePath);
+      let meta: { contentType?: string } = {};
+      try { meta = JSON.parse(fs.readFileSync(filePath + ".meta", "utf-8")); } catch { /* không có meta */ }
+      return {
+        body: new Uint8Array(buffer),
+        httpMetadata: { contentType: meta.contentType ?? "" },
+        size: buffer.length,
+        async arrayBuffer() { return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength); },
+      };
+    },
+    async delete(key: string) {
+      const filePath = r2PathFor(key);
+      try { fs.unlinkSync(filePath); } catch { /* đã xoá */ }
+      try { fs.unlinkSync(filePath + ".meta"); } catch { /* đã xoá */ }
+    },
+  };
+}
+
 const sqlite = await createLocalSqlite();
 
-export const env = { DB: makeD1Shim(sqlite) };
+export const env = { DB: makeD1Shim(sqlite), FILES: makeR2Shim() };

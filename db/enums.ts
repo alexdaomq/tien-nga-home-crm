@@ -192,3 +192,7 @@ export const SOURCES = [
 
 export const ROLES = ["sales", "manager"] as const;
 export type Role = (typeof ROLES)[number];
+
+// Loại tài liệu gửi khách (upload file thật lên R2).
+export const DOC_TYPES = ["bao_gia", "phoi_canh", "hinh_anh", "hop_dong", "khac"] as const;
+export type DocType = (typeof DOC_TYPES)[number];

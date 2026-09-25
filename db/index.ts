@@ -14,6 +14,21 @@ export function getDb() {
   return drizzle(env.DB, { schema });
 }
 
+// Kho lưu file (Cloudflare R2, binding `FILES`) — dùng cho tài liệu/báo giá gửi khách.
+export type FileBucket = {
+  put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
+  get(key: string): Promise<{ body: unknown; httpMetadata?: { contentType?: string }; size?: number } | null>;
+  delete(key: string): Promise<void>;
+};
+
+export function getFiles(): FileBucket {
+  const bucket = (env as unknown as { FILES?: FileBucket }).FILES;
+  if (!bucket) {
+    throw new Error("Cloudflare R2 binding `FILES` is unavailable. Set the `r2` field in .openai/hosting.json to `FILES` and bind the bucket.");
+  }
+  return bucket;
+}
+
 function generateSecret() {
   return crypto.randomUUID().replace(/-/g, "");
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import type { Activity, Customer, Project, Task } from "../../lib/types";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { Activity, Customer, Document, Project, Task } from "../../lib/types";
 import { money, formatDate, todayISO } from "../../lib/format";
 import { computeCustomerFlags } from "../../lib/flags";
-import { PIPELINE_STAGES } from "../../db/enums";
+import { PIPELINE_STAGES, DOC_TYPES } from "../../db/enums";
 import {
   FUNNEL_STAGE_LABEL,
   FUNNEL_STAGE_COLOR,
@@ -15,6 +15,7 @@ import {
   PROJECT_TYPE_LABEL,
   OBJECTION_LABEL,
   LOSS_REASON_LABEL,
+  DOC_TYPE_LABEL,
 } from "../../lib/labels";
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
   activities: Activity[];
   tasks: Task[];
   projects: Project[];
+  person: string;
   onClose: () => void;
   onEdit: (customer: Customer) => void;
   onAddNote: (text: string) => void;
@@ -76,9 +78,56 @@ function initialsOf(name: string): string {
 }
 
 export default function CustomerDetail(props: Props) {
-  const { customer, activities, tasks, projects, onClose, onEdit, onAddNote, onCompleteNextAction, onEditNextAction, onCreateNextAction, onChangeStage, onRequestLost, onDelete } = props;
+  const { customer, activities, tasks, projects, person, onClose, onEdit, onAddNote, onCompleteNextAction, onEditNextAction, onCreateNextAction, onChangeStage, onRequestLost, onDelete } = props;
   const [note, setNote] = useState("");
   const [showMore, setShowMore] = useState(false);
+
+  // Tài liệu/báo giá đã gửi khách (upload file thật lên R2).
+  const [docs, setDocs] = useState<Document[]>([]);
+  const [docType, setDocType] = useState<string>("bao_gia");
+  const [docAmount, setDocAmount] = useState("");
+  const [docNote, setDocNote] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/documents?customerId=${customer.id}`)
+      .then((res) => res.json())
+      .then((data) => { if (active) setDocs(data.documents ?? []); })
+      .catch(() => { if (active) setDocs([]); });
+    return () => { active = false; };
+  }, [customer.id]);
+
+  async function uploadFile(event: FormEvent) {
+    event.preventDefault();
+    setUploadError("");
+    const file = fileRef.current?.files?.[0];
+    if (!file) { setUploadError("Chưa chọn file."); return; }
+    const form = new FormData();
+    form.append("file", file);
+    form.append("customerId", String(customer.id));
+    form.append("docType", docType);
+    form.append("amount", docType === "bao_gia" ? String(Number(docAmount) || 0) : "0");
+    form.append("note", docNote.trim());
+    form.append("uploadedBy", person);
+    setUploading(true);
+    const res = await fetch("/api/documents", { method: "POST", body: form });
+    const data = await res.json();
+    setUploading(false);
+    if (!res.ok) { setUploadError(data.error ?? "Không tải lên được."); return; }
+    setDocs((prev) => [data.document, ...prev]);
+    setDocAmount("");
+    setDocNote("");
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function deleteDoc(doc: Document) {
+    if (!window.confirm(`Xoá "${doc.fileName}"?`)) return;
+    const res = await fetch("/api/documents", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: doc.id }) });
+    if (res.ok) setDocs((prev) => prev.filter((d) => d.id !== doc.id));
+  }
 
   const flags = useMemo(() => computeCustomerFlags(customer, tasks, todayISO(), Date.now()), [customer, tasks]);
   const products = useMemo(() => parseProducts(customer.interestedProducts), [customer.interestedProducts]);
@@ -210,6 +259,45 @@ export default function CustomerDetail(props: Props) {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Báo giá & tài liệu đã gửi khách */}
+        <div className="cd-section">
+          <div className="cd-section-title">Báo giá &amp; tài liệu đã gửi</div>
+          {docs.length > 0 && (
+            <div className="doc-list">
+              {docs.map((doc) => (
+                <div key={doc.id} className="doc-row">
+                  <div className="doc-icon">{doc.contentType.startsWith("image/") ? "🖼" : doc.contentType.includes("pdf") ? "📄" : "📎"}</div>
+                  <div className="doc-main">
+                    <a href={`/api/documents/file?id=${doc.id}`} target="_blank" rel="noreferrer" className="doc-name">{doc.fileName}</a>
+                    <div className="doc-meta">
+                      <span className="doc-type">{DOC_TYPE_LABEL[doc.docType] ?? doc.docType}</span>
+                      {doc.amount ? <span className="doc-amount">{money(doc.amount)}</span> : null}
+                      <span>{formatDate(doc.createdAt.slice(0, 10))} · {doc.uploadedBy}</span>
+                    </div>
+                    {doc.note ? <div className="doc-note">{doc.note}</div> : null}
+                  </div>
+                  <button className="doc-del" onClick={() => deleteDoc(doc)} aria-label="Xoá tài liệu">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={uploadFile} className="doc-upload">
+            <div className="doc-upload-row">
+              <select value={docType} onChange={(e) => setDocType(e.target.value)}>
+                {DOC_TYPES.map((t) => <option key={t} value={t}>{DOC_TYPE_LABEL[t]}</option>)}
+              </select>
+              {docType === "bao_gia" && (
+                <input type="number" min={0} placeholder="Số tiền (đ)" value={docAmount} onChange={(e) => setDocAmount(e.target.value)} />
+              )}
+            </div>
+            <input placeholder="Ghi chú (VD: bản v2 sau giảm giá)" value={docNote} onChange={(e) => setDocNote(e.target.value)} />
+            <input ref={fileRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" />
+            {uploadError ? <div className="warn-banner" style={{ padding: "6px 10px" }}>{uploadError}</div> : null}
+            <button type="submit" className="save-button" disabled={uploading}>{uploading ? "Đang tải lên..." : "＋ Tải tài liệu lên"}</button>
+          </form>
         </div>
 
         {/* Lịch sử chăm sóc */}

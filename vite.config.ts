@@ -31,7 +31,8 @@ const localBindingConfig = {
     ? [
         {
           binding: r2,
-          bucket_name: "site-creator-r2",
+          // Tên bucket R2 thật đã tạo trên Cloudflare (kho lưu tài liệu/báo giá).
+          bucket_name: "tien-nga-files",
         },
       ]
     : [],

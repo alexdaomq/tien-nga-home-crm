@@ -167,3 +167,11 @@ export const ROLE_LABEL: Record<string, string> = {
   sales: "Nhân viên sale",
   manager: "Quản lý / Admin",
 };
+
+export const DOC_TYPE_LABEL: Record<string, string> = {
+  bao_gia: "Báo giá",
+  phoi_canh: "Phối cảnh 3D",
+  hinh_anh: "Hình ảnh",
+  hop_dong: "Hợp đồng",
+  khac: "Tài liệu khác",
+};

@@ -191,3 +191,23 @@ export const appSettings = sqliteTable("app_settings", {
   calendarSecret: text("calendar_secret").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Tài liệu/báo giá đã gửi cho khách. File thật lưu trên Cloudflare R2 (theo r2Key);
+// bảng này chỉ lưu metadata để hiển thị + tải lại. Xem app/api/documents/route.ts.
+export const documents = sqliteTable(
+  "documents",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+    docType: text("doc_type").notNull().default("bao_gia"),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull().default(""),
+    r2Key: text("r2_key").notNull(),
+    size: integer("size").notNull().default(0),
+    amount: integer("amount").notNull().default(0),
+    note: text("note").notNull().default(""),
+    uploadedBy: text("uploaded_by").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [index("idx_documents_customer_created_at").on(table.customerId, table.createdAt)],
+);
