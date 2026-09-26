@@ -12,7 +12,7 @@ type Props = {
 };
 
 const CENTER_Y = 250; // đường timeline nằm thấp — chấm rải PHÍA TRÊN, nhãn nằm PHÍA DƯỚI
-const MAX_PER_STAGE = 16;
+const MAX_PER_STAGE = 24;
 
 // Các mốc trên timeline: "Chưa liên hệ" (data thô) đầu phễu, 9 giai đoạn pipeline,
 // "Không chốt" (mất khách) cuối phễu.
@@ -84,9 +84,9 @@ export default function PipelineMap({ customers, onOpen }: Props) {
         const warn = isWarn(c, today, nowMs);
         const col = j % 2;
         const rowUp = Math.floor(j / 2);
-        const size = Math.round(9 + Math.min(15, c.value / 6_500_000));
-        const y = CENTER_Y - 22 - rowUp * 22 - Math.round(seeded(c.id, 3) * 6);
-        const dx = (col === 0 ? -13 : 13) + (seeded(c.id, 7) - 0.5) * 9;
+        const size = Math.round(6 + Math.min(8, c.value / 8_000_000));
+        const y = CENTER_Y - 16 - rowUp * 16 - Math.round(seeded(c.id, 3) * 4);
+        const dx = (col === 0 ? -10 : 10) + (seeded(c.id, 7) - 0.5) * 7;
         dots.push({ c, xPct, y, dx, size, color: node.color, warn, label: node.label });
       });
       const value = list.reduce((s, c) => s + c.value, 0);
