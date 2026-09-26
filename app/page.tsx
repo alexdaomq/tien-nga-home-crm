@@ -8,6 +8,7 @@ import { AppointmentsBoard, CompletedBoard } from "./components/TaskBoards";
 import MetricsView from "./components/MetricsView";
 import TodayView from "./components/TodayView";
 import PipelineBoard from "./components/PipelineBoard";
+import PipelineMap from "./components/PipelineMap";
 import CustomerDetail from "./components/CustomerDetail";
 import CustomerForm from "./components/CustomerForm";
 import NextActionModal, { NextActionPayload } from "./components/NextActionModal";
@@ -439,7 +440,7 @@ export default function Home() {
           <div className="simple-page"><div className="empty-state"><strong>Đang tải dữ liệu...</strong></div></div>
         ) : view === "dashboard" ? (
           <Dashboard
-            person={person} isManager={isManager}
+            person={person} isManager={isManager} customers={visibleCustomers}
             newLeadsToday={newLeads} overdueTasks={overdueTasks} hotCustomers={hotCustomers}
             showroomToday={showroomToday} siteVisitToday={siteVisitToday}
             pipelineValue={pipelineValue} wonRevenue={wonRevenue}
@@ -561,14 +562,14 @@ function NotifRow({ label, count, onClick, tone }: { label: string; count: numbe
 
 // ---------------- Dashboard ----------------
 function Dashboard(props: {
-  person: string; isManager: boolean;
+  person: string; isManager: boolean; customers: Customer[];
   newLeadsToday: Customer[]; overdueTasks: Task[]; hotCustomers: Customer[];
   showroomToday: Customer[]; siteVisitToday: Customer[];
   pipelineValue: number; wonRevenue: number;
   stageCounts: Map<string, number>; totalCustomers: number;
   onOpenCustomer: (id: number) => void; onAddCustomer: () => void; onGoStage: (stage: string) => void;
 }) {
-  const { newLeadsToday, overdueTasks, hotCustomers, showroomToday, siteVisitToday, pipelineValue, wonRevenue, stageCounts, onOpenCustomer, onAddCustomer, onGoStage } = props;
+  const { customers, newLeadsToday, overdueTasks, hotCustomers, showroomToday, siteVisitToday, pipelineValue, wonRevenue, stageCounts, onOpenCustomer, onAddCustomer, onGoStage } = props;
   const cards = [
     { label: "Lead chưa xử lý", value: newLeadsToday.length, tone: "danger" },
     { label: "Việc quá hạn", value: overdueTasks.length, tone: "danger" },
@@ -584,6 +585,10 @@ function Dashboard(props: {
         <div><p>BẢN ĐỒ BÁN HÀNG HÔM NAY</p><h1>Dashboard điều hành</h1><span>Ai đang bỏ quên lead, việc nào quá hạn, tiền đang nằm ở đâu.</span></div>
         <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
       </section>
+
+      <div style={{ marginBottom: 16 }}>
+        <PipelineMap customers={customers} onOpen={(c) => onOpenCustomer(c.id)} />
+      </div>
 
       <section className="dash-cards">
         {cards.map((c) => (

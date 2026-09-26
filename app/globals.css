@@ -1399,6 +1399,29 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .journey-step span { font-size: 9.5px; }
 }
 
+/* Big Map — timeline dòng chảy pipeline (Dashboard) */
+.pmap-card { padding-bottom: 6px; }
+.pmap-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.pmap-toggle input { width: 15px; height: 15px; }
+.pmap-scroll { overflow-x: auto; overflow-y: hidden; margin: 4px 6px 0; }
+.pmap-wrap { position: relative; height: 300px; min-width: 1020px; }
+.pmap-line { position: absolute; left: 3%; right: 3%; top: 150px; height: 3px; border-radius: 2px; }
+.pmap-node { position: absolute; transform: translateX(-50%); text-align: center; width: 120px; }
+.pmap-node-dot { width: 12px; height: 12px; border-radius: 50%; margin: -18px auto 8px; border: 2px solid #fff; }
+.pmap-node-label { font-size: 11px; font-weight: 700; color: var(--ink); line-height: 1.15; }
+.pmap-node-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.pmap-dot { position: absolute; border: none; padding: 0; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1.5px #fff; transition: transform .1s; }
+.pmap-dot:hover { transform: scale(1.5); z-index: 4; }
+.pmap-dot.warn { box-shadow: 0 0 0 2px #e4542d, 0 0 0 4px rgba(228,84,45,.18); }
+.pmap-tip { position: absolute; z-index: 6; pointer-events: none; transform: translate(-50%, -100%); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 12px; white-space: nowrap; box-shadow: 0 8px 22px rgba(4,82,29,.16); }
+.pmap-tip-name { font-weight: 700; color: var(--ink); }
+.pmap-tip-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.pmap-tip-warn { color: #c1391a; font-weight: 700; }
+.pmap-foot { text-align: center; font-size: 11px; color: var(--muted); padding: 8px 0 4px; }
+@media (max-width: 720px) {
+  .pmap-wrap { height: 300px; overflow-x: auto; }
+}
+
 /* Báo cáo — thẻ tài chính + biểu đồ */
 .report-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .report-card { background: #fff; border: 1px solid #e6ece6; border-left: 4px solid var(--accent, #178d12); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; }
