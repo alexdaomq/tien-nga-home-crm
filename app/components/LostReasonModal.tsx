@@ -35,7 +35,7 @@ export default function LostReasonModal({ open, customerName, onSubmit, onClose 
   if (!open) return null;
 
   function submit() {
-    if (!reason) { setError("Vui lòng chọn 1 lý do trước khi đánh dấu mất khách."); return; }
+    if (!reason) { setError("Vui lòng chọn 1 lý do trước khi đánh dấu không chốt."); return; }
     onSubmit({ lossReason: reason, lostNote: note.trim(), lostCompetitor: competitor.trim() });
   }
 
@@ -74,7 +74,7 @@ export default function LostReasonModal({ open, customerName, onSubmit, onClose 
 
         <div className="modal-actions">
           <button type="button" className="outline-button" onClick={onClose}>Huỷ</button>
-          <button type="button" className="save-button danger-button" onClick={submit}>Đánh dấu mất khách</button>
+          <button type="button" className="save-button danger-button" onClick={submit}>Đánh dấu không chốt</button>
         </div>
       </div>
     </div>

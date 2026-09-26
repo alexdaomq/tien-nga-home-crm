@@ -214,7 +214,7 @@ export async function PATCH(request: Request) {
     // Không cho chuyển sang "Mất khách" nếu chưa chọn lý do (theo brief).
     const movingToLost = payload.funnelStage !== undefined && String(payload.funnelStage) === "lost";
     if (movingToLost && !allowedLossReasons.has(String(payload.lossReason ?? "").trim())) {
-      return Response.json({ error: "Vui lòng chọn lý do mất khách." }, { status: 400 });
+      return Response.json({ error: "Vui lòng chọn lý do không chốt." }, { status: 400 });
     }
 
     const db = getDb();

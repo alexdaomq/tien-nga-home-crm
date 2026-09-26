@@ -11,7 +11,7 @@ export const FUNNEL_STAGE_LABEL: Record<string, string> = {
   won: "Đã chốt",
   delivering: "Đang giao/lắp",
   aftercare: "Hoàn thành / Hậu mãi",
-  lost: "Mất khách",
+  lost: "Không chốt",
   paused: "Tạm hoãn",
 };
 

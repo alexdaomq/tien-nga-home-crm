@@ -27,7 +27,7 @@ import {
   ROLE_LABEL,
   ACTION_TYPE_LABEL,
 } from "../lib/labels";
-import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, SOURCES } from "../db/enums";
+import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, SOURCES, STAGE_ALIAS } from "../db/enums";
 
 const funnelStageOptions = FUNNEL_STAGES.map((value) => ({ value, label: FUNNEL_STAGE_LABEL[value] }));
 const priorityOptions = PRIORITIES.map((value) => ({ value, label: `${PRIORITY_EMOJI[value]} ${PRIORITY_LABEL[value]}` }));
@@ -186,7 +186,8 @@ export default function Home() {
   const filteredCustomers = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("vi");
     return visibleCustomers.filter((c) => {
-      if (stageFilter !== "all" && c.funnelStage !== stageFilter) return false;
+      if (stageFilter === "uncontacted") { if (c.contactResult !== "chua_lien_he" || c.funnelStage === "lost") return false; }
+      else if (stageFilter !== "all" && c.funnelStage !== stageFilter) return false;
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
       if (ownerFilter !== "all" && c.owner !== ownerFilter) return false;
       if (sourceFilter !== "all" && c.source !== sourceFilter) return false;
@@ -337,7 +338,7 @@ export default function Home() {
     });
     if (!ok) return;
     await addActivity(customer.id, `MẤT KHÁCH: ${payload.lossReason}${payload.lostCompetitor ? ` · ${payload.lostCompetitor}` : ""}${payload.lostNote ? ` · ${payload.lostNote}` : ""}`);
-    setToast("Đã đánh dấu mất khách");
+    setToast("Đã đánh dấu không chốt");
     await refreshCore();
   }
 
@@ -420,7 +421,7 @@ export default function Home() {
               {showNotif && (
                 <div className="notif-pop">
                   <NotifRow label="Việc quá hạn" count={overdueTasks.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="danger" />
-                  <NotifRow label="Lead mới chưa xử lý" count={newLeads.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="danger" />
+                  <NotifRow label="Khách chưa liên hệ" count={newLeads.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="danger" />
                   <NotifRow label="Lịch showroom hôm nay" count={showroomToday.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="info" />
                   <NotifRow label="Khảo sát công trình hôm nay" count={siteVisitToday.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="info" />
                   <NotifRow label="Khách HOT đang chờ" count={hotCustomers.length} onClick={() => { setView("today"); setShowNotif(false); }} tone="warm" />
@@ -569,9 +570,21 @@ function Dashboard(props: {
   stageCounts: Map<string, number>; totalCustomers: number;
   onOpenCustomer: (id: number) => void; onAddCustomer: () => void; onGoStage: (stage: string) => void;
 }) {
-  const { customers, newLeadsToday, overdueTasks, hotCustomers, showroomToday, siteVisitToday, pipelineValue, wonRevenue, stageCounts, onOpenCustomer, onAddCustomer, onGoStage } = props;
+  const { customers, newLeadsToday, overdueTasks, hotCustomers, showroomToday, siteVisitToday, pipelineValue, wonRevenue, onOpenCustomer, onAddCustomer, onGoStage } = props;
+  // Đếm theo mốc — nhất quán với Big Map: Chưa liên hệ (đầu) + 9 giai đoạn + Không chốt (cuối).
+  const funnelCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of customers) {
+      let key: string;
+      if (c.contactResult === "chua_lien_he" && c.funnelStage !== "lost") key = "uncontacted";
+      else if (c.funnelStage === "lost") key = "lost";
+      else key = (PIPELINE_STAGES as readonly string[]).includes(c.funnelStage) ? c.funnelStage : (STAGE_ALIAS[c.funnelStage] ?? "");
+      if (key) m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  }, [customers]);
   const cards = [
-    { label: "Lead chưa xử lý", value: newLeadsToday.length, tone: "danger" },
+    { label: "Chưa liên hệ", value: newLeadsToday.length, tone: "danger" },
     { label: "Việc quá hạn", value: overdueTasks.length, tone: "danger" },
     { label: "Khách HOT", value: hotCustomers.length, tone: "warm" },
     { label: "Showroom hôm nay", value: showroomToday.length, tone: "info" },
@@ -601,12 +614,20 @@ function Dashboard(props: {
       <div className="map-card" style={{ marginTop: 16 }}>
         <div className="dashboard-card-title"><strong>Phễu pipeline</strong><span>{props.totalCustomers} khách</span></div>
         <div className="pipeline-track">
+          <button style={{ ["--stage" as string]: "#8b8b8b" }} onClick={() => onGoStage("uncontacted")}>
+            <div className="stage-step">{funnelCounts.get("uncontacted") ?? 0}</div>
+            <small>Chưa liên hệ</small>
+          </button>
           {PIPELINE_STAGES.map((stage) => (
             <button key={stage} style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[stage] }} onClick={() => onGoStage(stage)}>
-              <div className="stage-step">{stageCounts.get(stage) ?? 0}</div>
+              <div className="stage-step">{funnelCounts.get(stage) ?? 0}</div>
               <small>{FUNNEL_STAGE_LABEL[stage]}</small>
             </button>
           ))}
+          <button style={{ ["--stage" as string]: "#94a3a0" }} onClick={() => onGoStage("lost")}>
+            <div className="stage-step">{funnelCounts.get("lost") ?? 0}</div>
+            <small>Không chốt</small>
+          </button>
         </div>
       </div>
 
@@ -625,7 +646,7 @@ function Dashboard(props: {
             </button>
           ))}
         </DashList>
-        <DashList title="Lead mới chưa xử lý" tone="danger" empty="Không còn lead nào chờ.">
+        <DashList title="Khách chưa liên hệ" tone="danger" empty="Không còn khách nào chờ liên hệ.">
           {newLeadsToday.slice(0, 8).map((c) => (
             <button key={c.id} className="dash-row" onClick={() => onOpenCustomer(c.id)}>
               <strong>{c.fullName}</strong><small>{c.source} · {c.ward || "—"} · {c.owner}</small>
@@ -653,7 +674,7 @@ const SEGMENTS: { key: string; label: string }[] = [
   { key: "all", label: "Tất cả" },
   { key: "mine", label: "Của tôi" },
   { key: "hot", label: "🔥 Nóng" },
-  { key: "new", label: "Chưa xử lý" },
+  { key: "new", label: "Chưa liên hệ" },
   { key: "quote", label: "Cần follow báo giá" },
   { key: "overdue", label: "Quá hạn" },
 ];

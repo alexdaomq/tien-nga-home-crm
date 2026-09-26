@@ -123,7 +123,7 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
         {overdue.map((task) => <TaskCard key={task.id} task={task} tone="danger" />)}
       </Group>
 
-      <Group title="2 · Lead mới chưa xử lý" count={newLeads.length} tone="danger" empty="Không có lead mới chờ xử lý.">
+      <Group title="2 · Chưa liên hệ" count={newLeads.length} tone="danger" empty="Không có khách nào chờ liên hệ.">
         {newLeads.map((customer) => <CustomerCard key={customer.id} customer={customer} tone="danger" />)}
       </Group>
 

@@ -347,12 +347,12 @@ export default function CustomerDetail(props: Props) {
                 </button>
               ))}
               <button className="off" onClick={() => onChangeStage(customer, "paused")}>Tạm hoãn</button>
-              <button className="off danger" onClick={() => onRequestLost(customer)}>Mất khách</button>
+              <button className="off danger" onClick={() => onRequestLost(customer)}>Không chốt</button>
             </div>
 
             {customer.funnelStage === "lost" && (
               <div className="warn-banner detail" style={{ marginTop: 12 }}>
-                <div>Lý do mất: <strong>{LOSS_REASON_LABEL[customer.lossReason] ?? customer.lossReason}</strong></div>
+                <div>Lý do không chốt: <strong>{LOSS_REASON_LABEL[customer.lossReason] ?? customer.lossReason}</strong></div>
                 {customer.lostCompetitor ? <div>Đối thủ: {customer.lostCompetitor}</div> : null}
                 {customer.lostNote ? <div>Ghi chú: {customer.lostNote}</div> : null}
               </div>

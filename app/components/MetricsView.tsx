@@ -354,8 +354,8 @@ export default function MetricsView({
           </div>
         </div>
         <div className="map-card">
-          <div className="dashboard-card-title"><strong>Lý do mất khách</strong></div>
-          <div style={{ padding: 14 }}><BarChart items={lossBars} empty="Chưa mất khách nào trong tháng." /></div>
+          <div className="dashboard-card-title"><strong>Lý do không chốt</strong></div>
+          <div style={{ padding: 14 }}><BarChart items={lossBars} empty="Chưa có khách không chốt trong tháng." /></div>
         </div>
       </div>
 
