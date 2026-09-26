@@ -11,8 +11,8 @@ type Props = {
   onOpen: (customer: Customer) => void;
 };
 
-const CENTER_Y = 150;
-const MAX_PER_STAGE = 26;
+const CENTER_Y = 250; // đường timeline nằm thấp — chấm rải PHÍA TRÊN, nhãn nằm PHÍA DƯỚI
+const MAX_PER_STAGE = 16;
 
 function stageColumnOf(stage: string): string {
   if ((PIPELINE_STAGES as readonly string[]).includes(stage)) return stage;
@@ -37,7 +37,7 @@ function isWarn(c: Customer, today: string, nowMs: number): boolean {
   return overdue || noNext || hotAtRisk;
 }
 
-type Dot = { c: Customer; xPct: number; y: number; size: number; color: string; warn: boolean };
+type Dot = { c: Customer; xPct: number; y: number; dx: number; size: number; color: string; warn: boolean };
 
 export default function PipelineMap({ customers, onOpen }: Props) {
   const [onlyWarn, setOnlyWarn] = useState(false);
@@ -61,14 +61,15 @@ export default function PipelineMap({ customers, onOpen }: Props) {
       const list = (byStage.get(stage) ?? []).slice().sort((a, b) => b.value - a.value);
       const xPct = 3 + ((i + 0.5) / N) * 94;
       const shown = list.slice(0, MAX_PER_STAGE);
+      // Rải chấm THÀNH 2 CỘT đi LÊN phía trên line — tách hẳn khỏi vùng nhãn ở dưới.
       shown.forEach((c, j) => {
         const warn = isWarn(c, today, nowMs);
-        const above = j % 2 === 0;
-        const ring = Math.floor(j / 2);
-        const dy = 20 + ring * 22 + seeded(c.id, 3) * 9;
-        const y = above ? CENTER_Y - dy : CENTER_Y + dy + 6;
+        const col = j % 2;
+        const rowUp = Math.floor(j / 2);
         const size = Math.round(9 + Math.min(15, c.value / 6_500_000));
-        dots.push({ c, xPct, y, size, color: FUNNEL_STAGE_COLOR[stage], warn });
+        const y = CENTER_Y - 22 - rowUp * 22 - Math.round(seeded(c.id, 3) * 6);
+        const dx = (col === 0 ? -13 : 13) + (seeded(c.id, 7) - 0.5) * 9;
+        dots.push({ c, xPct, y, dx, size, color: FUNNEL_STAGE_COLOR[stage], warn });
       });
       const value = list.reduce((s, c) => s + c.value, 0);
       return { stage, xPct, count: list.length, value, extra: Math.max(0, list.length - MAX_PER_STAGE) };
@@ -104,7 +105,7 @@ export default function PipelineMap({ customers, onOpen }: Props) {
           <button
             key={d.c.id}
             className={`pmap-dot${d.warn ? " warn" : ""}`}
-            style={{ left: `${d.xPct}%`, top: d.y, width: d.size, height: d.size, marginLeft: (seeded(d.c.id, 7) - 0.5) * 42 - d.size / 2, background: d.color }}
+            style={{ left: `${d.xPct}%`, top: d.y, width: d.size, height: d.size, marginLeft: d.dx - d.size / 2, background: d.color }}
             onClick={() => onOpen(d.c)}
             onMouseEnter={(e) => {
               const wrap = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();

@@ -1412,8 +1412,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .pmap-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .pmap-toggle input { width: 15px; height: 15px; }
 .pmap-scroll { overflow-x: auto; overflow-y: hidden; margin: 4px 6px 0; }
-.pmap-wrap { position: relative; height: 300px; min-width: 1020px; }
-.pmap-line { position: absolute; left: 3%; right: 3%; top: 150px; height: 3px; border-radius: 2px; }
+.pmap-wrap { position: relative; height: 320px; min-width: 1020px; }
+.pmap-line { position: absolute; left: 3%; right: 3%; top: 250px; height: 3px; border-radius: 2px; }
 .pmap-node { position: absolute; transform: translateX(-50%); text-align: center; width: 120px; }
 .pmap-node-dot { width: 12px; height: 12px; border-radius: 50%; margin: -18px auto 8px; border: 2px solid #fff; }
 .pmap-node-label { font-size: 11px; font-weight: 700; color: var(--ink); line-height: 1.15; }
