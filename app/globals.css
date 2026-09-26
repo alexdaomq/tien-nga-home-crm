@@ -1399,6 +1399,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .journey-step span { font-size: 9.5px; }
 }
 
+/* Khách hàng — lọc nhanh (chip) + tải thêm */
+.seg-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.seg-chips button { padding: 8px 15px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; color: #41625b; cursor: pointer; transition: all .12s; }
+.seg-chips button:hover { border-color: var(--warm); }
+.seg-chips button.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+.load-more { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 16px; }
+.load-more span { font-size: 12px; color: var(--muted); }
+
 /* Big Map — timeline dòng chảy pipeline (Dashboard) */
 .pmap-card { padding-bottom: 6px; }
 .pmap-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }

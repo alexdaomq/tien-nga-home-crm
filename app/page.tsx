@@ -460,7 +460,7 @@ export default function Home() {
           />
         ) : view === "customers" ? (
           <CustomersTable
-            customers={filteredCustomers} count={filteredCustomers.length}
+            customers={filteredCustomers} count={filteredCustomers.length} person={person}
             stageFilter={stageFilter} setStageFilter={setStageFilter}
             priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}
             ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
@@ -649,16 +649,47 @@ function DashList({ title, tone, empty, children }: { title: string; tone: strin
 }
 
 // ---------------- Customers table ----------------
+const SEGMENTS: { key: string; label: string }[] = [
+  { key: "all", label: "Tất cả" },
+  { key: "mine", label: "Của tôi" },
+  { key: "hot", label: "🔥 Nóng" },
+  { key: "new", label: "Chưa xử lý" },
+  { key: "quote", label: "Cần follow báo giá" },
+  { key: "overdue", label: "Quá hạn" },
+];
+
+function passSegment(c: Customer, seg: string, person: string, today: string): boolean {
+  const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage);
+  switch (seg) {
+    case "mine": return c.owner === person;
+    case "hot": return c.priority === "hot" && active;
+    case "new": return c.funnelStage === "lead" && c.contactResult === "chua_lien_he";
+    case "quote": return c.funnelStage === "quoted";
+    case "overdue": return /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
+    default: return true;
+  }
+}
+
+const PAGE_SIZE = 25;
+
 function CustomersTable(props: {
-  customers: Customer[]; count: number; today: string;
+  customers: Customer[]; count: number; today: string; person: string;
   stageFilter: string; setStageFilter: (v: string) => void;
   priorityFilter: string; setPriorityFilter: (v: string) => void;
   ownerFilter: string; setOwnerFilter: (v: string) => void;
   sourceFilter: string; setSourceFilter: (v: string) => void;
   onOpen: (c: Customer) => void; onAddCustomer: () => void;
 }) {
-  const { customers, count, today, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, onOpen, onAddCustomer } = props;
+  const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, onOpen, onAddCustomer } = props;
   const COLS = "1.6fr 1fr 1fr 0.9fr 1fr 0.8fr 1.6fr";
+  const [segment, setSegment] = useState("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  const segmented = useMemo(() => customers.filter((c) => passSegment(c, segment, person, today)), [customers, segment, person, today]);
+  const shown = segmented.slice(0, limit);
+
+  function chooseSegment(key: string) { setSegment(key); setLimit(PAGE_SIZE); }
+
   return (
     <div className="simple-page">
       <section className="welcome-row customer-hub-welcome">
@@ -666,24 +697,30 @@ function CustomersTable(props: {
         <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
       </section>
 
+      <div className="seg-chips">
+        {SEGMENTS.map((s) => (
+          <button key={s.key} className={segment === s.key ? "active" : ""} onClick={() => chooseSegment(s.key)}>{s.label}</button>
+        ))}
+      </div>
+
       <section className="customer-hub-filters">
-        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
+        <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả giai đoạn</option>
           {funnelStageOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+        <select value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả mức độ</option>
           {priorityOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+        <select value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả sale</option>
           {TEAM_MEMBERS.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
-        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+        <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả nguồn</option>
           {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <span>{count} khách</span>
+        <span>{segmented.length} khách</span>
       </section>
 
       <section className="customer-hub-table">
@@ -691,9 +728,9 @@ function CustomersTable(props: {
           <div className="crm-table-head" style={{ gridTemplateColumns: COLS }}>
             <span>Khách hàng</span><span>Khu vực</span><span>Giai đoạn</span><span>Mức độ</span><span>Giá trị</span><span>Sale</span><span>Việc tiếp theo</span>
           </div>
-          {customers.length === 0 ? (
+          {shown.length === 0 ? (
             <div className="crm-table-empty"><strong>Chưa có khách phù hợp bộ lọc</strong></div>
-          ) : customers.map((c) => {
+          ) : shown.map((c) => {
             const overdue = /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
             const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage);
             const noNext = active && !(c.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate));
@@ -712,6 +749,14 @@ function CustomersTable(props: {
             );
           })}
         </div>
+        {segmented.length > shown.length && (
+          <div className="load-more">
+            <button className="outline-button" style={{ width: "auto" }} onClick={() => setLimit((l) => l + PAGE_SIZE)}>
+              Xem thêm {Math.min(PAGE_SIZE, segmented.length - shown.length)} khách
+            </button>
+            <span>Đang hiện {shown.length} / {segmented.length}</span>
+          </div>
+        )}
       </section>
     </div>
   );
