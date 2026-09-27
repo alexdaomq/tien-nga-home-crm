@@ -1,6 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
+import PwaRegister from "./components/PwaRegister";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#178d12",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -12,7 +20,17 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: baseUrl,
     title: "Tiến Nga Home CRM",
     description: "CRM bán hàng B2C với bản đồ cơ hội, ưu tiên chăm sóc và dữ liệu khách hàng đầy đủ của Tiến Nga Home.",
-    icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: "/favicon.svg",
+      shortcut: "/favicon.svg",
+      apple: "/icons/apple-touch-icon.png",
+    },
+    appleWebApp: {
+      capable: true,
+      title: "Tiến Nga CRM",
+      statusBarStyle: "default",
+    },
     openGraph: {
       title: "Tiến Nga Home · CRM bán hàng B2C",
       description: "Rõ cơ hội · Đúng ưu tiên · Chốt hiệu quả.",
@@ -36,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head><meta charSet="utf-8" /></head>
-      <body>{children}</body>
+      <body>{children}<PwaRegister /></body>
     </html>
   );
 }
