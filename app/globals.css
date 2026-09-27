@@ -753,8 +753,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     box-shadow: 0 -8px 28px rgba(12, 45, 42, .18);
   }
   .simple-sidebar::after, .simple-brand, .sidebar-note { display: none; }
-  .simple-sidebar nav { width: 100%; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 0; }
-  .simple-sidebar nav button { min-height: 59px; grid-template-columns: 1fr; justify-items: center; gap: 2px; padding: 5px; border-radius: 12px; font-size: 11px; }
+  .simple-sidebar nav { width: 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; margin: 0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .simple-sidebar nav::-webkit-scrollbar { display: none; }
+  .simple-sidebar nav button { flex: 0 0 auto; width: 66px; min-height: 59px; grid-template-columns: 1fr; justify-items: center; gap: 2px; padding: 5px 4px; border-radius: 12px; font-size: 10.5px; line-height: 1.15; }
   .simple-sidebar nav button:hover { transform: none; }
   .simple-sidebar nav button.active { box-shadow: inset 0 3px #fff1cf, 0 5px 14px rgba(77, 45, 0, .24); }
   .simple-sidebar nav i { font-size: 20px; line-height: 1; }
@@ -1076,7 +1077,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 @media (max-width: 860px) {
-  .simple-sidebar nav { grid-template-columns: repeat(6, 1fr); }
   .customer-hub-filters { align-items: stretch; flex-direction: column; }
   .customer-hub-filters > div { grid-template-columns: repeat(2, 1fr); }
   .customer-hub-filters > button { width: 100%; }
