@@ -11,8 +11,8 @@ type Props = {
   onOpen: (customer: Customer) => void;
 };
 
-const CENTER_Y = 250; // đường timeline nằm thấp — chấm rải PHÍA TRÊN, nhãn nằm PHÍA DƯỚI
 const MAX_PER_STAGE = 24;
+const ROW_GAP = 16; // khoảng cách giữa các hàng chấm xếp lên trên
 
 // Các mốc trên timeline: "Chưa liên hệ" (data thô) đầu phễu, 9 giai đoạn pipeline,
 // "Không chốt" (mất khách) cuối phễu.
@@ -63,7 +63,7 @@ export default function PipelineMap({ customers, onOpen }: Props) {
   const today = todayISO();
   const nowMs = Date.now();
 
-  const { dots, nodeInfo, total, warnCount } = useMemo(() => {
+  const { dots, nodeInfo, total, warnCount, centerY, wrapH } = useMemo(() => {
     const byKey = new Map<string, Customer[]>();
     for (const n of NODES) byKey.set(n.key, []);
     let warnCount = 0;
@@ -76,6 +76,15 @@ export default function PipelineMap({ customers, onOpen }: Props) {
       if (isWarn(c, today, nowMs)) warnCount += 1;
     }
     const N = NODES.length;
+    // Chiều cao tự co: chấm xếp 2 cột hướng lên, lấy cột cao nhất để đặt đường timeline
+    // -> ít khách thì khung thấp, nhiều khách thì cao dần, không chừa khoảng trắng thừa.
+    let maxRows = 1;
+    for (const n of NODES) {
+      const shown = Math.min((byKey.get(n.key) ?? []).length, MAX_PER_STAGE);
+      maxRows = Math.max(maxRows, Math.ceil(shown / 2));
+    }
+    const centerY = 40 + maxRows * ROW_GAP;
+    const wrapH = centerY + 78;
     const dots: Dot[] = [];
     const nodeInfo = NODES.map((node, i) => {
       const list = (byKey.get(node.key) ?? []).slice().sort((a, b) => b.value - a.value);
@@ -85,14 +94,14 @@ export default function PipelineMap({ customers, onOpen }: Props) {
         const col = j % 2;
         const rowUp = Math.floor(j / 2);
         const size = Math.round(6 + Math.min(8, c.value / 8_000_000));
-        const y = CENTER_Y - 16 - rowUp * 16 - Math.round(seeded(c.id, 3) * 4);
+        const y = centerY - 16 - rowUp * ROW_GAP - Math.round(seeded(c.id, 3) * 4);
         const dx = (col === 0 ? -10 : 10) + (seeded(c.id, 7) - 0.5) * 7;
         dots.push({ c, xPct, y, dx, size, color: node.color, warn, label: node.label });
       });
       const value = list.reduce((s, c) => s + c.value, 0);
       return { key: node.key, label: node.label, color: node.color, xPct, count: list.length, value, extra: Math.max(0, list.length - MAX_PER_STAGE) };
     });
-    return { dots, nodeInfo, total, warnCount };
+    return { dots, nodeInfo, total, warnCount, centerY, wrapH };
   }, [customers, today, nowMs]);
 
   const visibleDots = onlyWarn ? dots.filter((d) => d.warn) : dots;
@@ -108,11 +117,11 @@ export default function PipelineMap({ customers, onOpen }: Props) {
       </div>
 
       <div className="pmap-scroll">
-        <div className="pmap-wrap" onMouseLeave={() => setHover(null)}>
-          <div className="pmap-line" style={{ background: LINE_GRADIENT }} />
+        <div className="pmap-wrap" style={{ height: wrapH }} onMouseLeave={() => setHover(null)}>
+          <div className="pmap-line" style={{ background: LINE_GRADIENT, top: centerY }} />
 
           {nodeInfo.map((s) => (
-            <div key={s.key} className="pmap-node" style={{ left: `${s.xPct}%`, top: CENTER_Y + 14 }}>
+            <div key={s.key} className="pmap-node" style={{ left: `${s.xPct}%`, top: centerY + 14 }}>
               <div className="pmap-node-dot" style={{ background: s.color, boxShadow: `0 0 0 2px ${s.color}` }} />
               <div className="pmap-node-label">{s.label}</div>
               <div className="pmap-node-sub">{s.count} khách{s.extra ? ` +${s.extra}` : ""}</div>
