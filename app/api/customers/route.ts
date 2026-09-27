@@ -9,6 +9,10 @@ const allowedPriorities = new Set<string>(PRIORITIES);
 const allowedContactResults = new Set<string>(CONTACT_RESULTS);
 const allowedLossReasons = new Set<string>(LOSS_REASONS);
 
+// Tự nạp 23 khách mẫu khi bảng rỗng. TẮT (false) khi dùng thật để bảng trống đúng nghĩa
+// — không tự sinh lại dữ liệu demo. Đổi thành true nếu muốn có khách mẫu để test giao diện.
+const AUTO_SEED = false;
+
 function errorMessage(error: unknown) {
   // Gom message của cả chuỗi `cause` — drizzle bọc lỗi D1 nên "UNIQUE constraint failed"
   // thường nằm ở error.cause chứ không phải error.message (khiến check cũ bỏ sót).
@@ -100,7 +104,7 @@ export async function GET() {
   try {
     const db = getDb();
     let rows = await db.select().from(customers).orderBy(desc(customers.updatedAt), desc(customers.id)).limit(1000);
-    if (rows.length === 0) {
+    if (AUTO_SEED && rows.length === 0) {
       // Cloudflare D1 giới hạn 100 tham số/câu lệnh — chèn từng khách một (mỗi
       // dòng ~54 tham số) thay vì 1 câu insert lớn (sẽ vượt giới hạn và lỗi).
       for (const seedRow of buildSeedCustomers()) {
