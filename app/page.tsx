@@ -186,7 +186,7 @@ export default function Home() {
   const filteredCustomers = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("vi");
     return visibleCustomers.filter((c) => {
-      if (stageFilter === "uncontacted") { if (c.contactResult !== "chua_lien_he" || c.funnelStage === "lost") return false; }
+      if (stageFilter === "uncontacted") { if (!(c.funnelStage === "lead" && c.contactResult === "chua_lien_he")) return false; }
       else if (stageFilter !== "all" && c.funnelStage !== stageFilter) return false;
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
       if (ownerFilter !== "all" && c.owner !== ownerFilter) return false;
@@ -576,8 +576,8 @@ function Dashboard(props: {
     const m = new Map<string, number>();
     for (const c of customers) {
       let key: string;
-      if (c.contactResult === "chua_lien_he" && c.funnelStage !== "lost") key = "uncontacted";
-      else if (c.funnelStage === "lost") key = "lost";
+      if (c.funnelStage === "lost") key = "lost";
+      else if (c.funnelStage === "lead" && c.contactResult === "chua_lien_he") key = "uncontacted";
       else key = (PIPELINE_STAGES as readonly string[]).includes(c.funnelStage) ? c.funnelStage : (STAGE_ALIAS[c.funnelStage] ?? "");
       if (key) m.set(key, (m.get(key) ?? 0) + 1);
     }

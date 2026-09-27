@@ -32,8 +32,8 @@ function stageColumnOf(stage: string): string {
 
 // Mốc mà khách thuộc về: chưa liên hệ > mất khách > giai đoạn pipeline (bỏ tạm hoãn).
 function bucketOf(c: Customer): string {
-  if (c.contactResult === "chua_lien_he" && c.funnelStage !== "lost") return START_KEY;
   if (c.funnelStage === "lost") return LOST_KEY;
+  if (c.funnelStage === "lead" && c.contactResult === "chua_lien_he") return START_KEY;
   return stageColumnOf(c.funnelStage);
 }
 
