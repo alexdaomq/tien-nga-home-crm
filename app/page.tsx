@@ -26,8 +26,9 @@ import {
   PRIORITY_LABEL,
   ROLE_LABEL,
   ACTION_TYPE_LABEL,
+  PROJECT_STAGE_LABEL,
 } from "../lib/labels";
-import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, SOURCES, STAGE_ALIAS } from "../db/enums";
+import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, PROJECT_STAGES, SOURCES, STAGE_ALIAS } from "../db/enums";
 
 const funnelStageOptions = FUNNEL_STAGES.map((value) => ({ value, label: FUNNEL_STAGE_LABEL[value] }));
 const priorityOptions = PRIORITIES.map((value) => ({ value, label: `${PRIORITY_EMOJI[value]} ${PRIORITY_LABEL[value]}` }));
@@ -51,6 +52,7 @@ export default function Home() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [projectStageFilter, setProjectStageFilter] = useState("all");
 
   const [selected, setSelected] = useState<Customer | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -191,10 +193,11 @@ export default function Home() {
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
       if (ownerFilter !== "all" && c.owner !== ownerFilter) return false;
       if (sourceFilter !== "all" && c.source !== sourceFilter) return false;
+      if (projectStageFilter !== "all" && c.projectStage !== projectStageFilter) return false;
       if (!term) return true;
       return `${c.fullName} ${c.phone} ${c.address} ${c.ward} ${c.need}`.toLocaleLowerCase("vi").includes(term);
     });
-  }, [visibleCustomers, search, stageFilter, priorityFilter, ownerFilter, sourceFilter]);
+  }, [visibleCustomers, search, stageFilter, priorityFilter, ownerFilter, sourceFilter, projectStageFilter]);
 
   const pipelineValue = useMemo(
     () => visibleCustomers.filter((c) => !["lost", "paused"].includes(c.funnelStage)).reduce((s, c) => s + c.value, 0),
@@ -475,6 +478,7 @@ export default function Home() {
             priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}
             ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
             sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
+            projectStageFilter={projectStageFilter} setProjectStageFilter={setProjectStageFilter}
             today={today}
             onOpen={setSelected} onAddCustomer={() => { setFormCustomer(null); setFormMode("create"); }}
           />
@@ -709,9 +713,10 @@ function CustomersTable(props: {
   priorityFilter: string; setPriorityFilter: (v: string) => void;
   ownerFilter: string; setOwnerFilter: (v: string) => void;
   sourceFilter: string; setSourceFilter: (v: string) => void;
+  projectStageFilter: string; setProjectStageFilter: (v: string) => void;
   onOpen: (c: Customer) => void; onAddCustomer: () => void;
 }) {
-  const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, onOpen, onAddCustomer } = props;
+  const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, projectStageFilter, setProjectStageFilter, onOpen, onAddCustomer } = props;
   const COLS = "1.6fr 1fr 1fr 0.9fr 1fr 0.8fr 1.6fr";
   const [segment, setSegment] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -750,6 +755,10 @@ function CustomersTable(props: {
         <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả nguồn</option>
           {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={projectStageFilter} onChange={(e) => { setProjectStageFilter(e.target.value); setLimit(PAGE_SIZE); }}>
+          <option value="all">Tất cả giai đoạn thi công</option>
+          {PROJECT_STAGES.map((s) => <option key={s} value={s}>{PROJECT_STAGE_LABEL[s]}</option>)}
         </select>
         <span>{segmented.length} khách</span>
       </section>
