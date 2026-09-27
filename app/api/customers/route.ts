@@ -10,9 +10,16 @@ const allowedContactResults = new Set<string>(CONTACT_RESULTS);
 const allowedLossReasons = new Set<string>(LOSS_REASONS);
 
 function errorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : "Có lỗi xảy ra";
-  if (message.includes("UNIQUE") || message.includes("unique")) return "Số điện thoại này đã có trong hệ thống.";
-  return message;
+  // Gom message của cả chuỗi `cause` — drizzle bọc lỗi D1 nên "UNIQUE constraint failed"
+  // thường nằm ở error.cause chứ không phải error.message (khiến check cũ bỏ sót).
+  let combined = "";
+  let cur: unknown = error;
+  for (let depth = 0; depth < 6 && cur; depth++) {
+    if (cur instanceof Error) { combined += ` ${cur.message}`; cur = (cur as { cause?: unknown }).cause; }
+    else { combined += ` ${String(cur)}`; break; }
+  }
+  if (/unique/i.test(combined)) return "Số điện thoại này đã có trong hệ thống.";
+  return error instanceof Error ? error.message : "Có lỗi xảy ra";
 }
 
 function concreteLatestUpdate(customer: typeof customers.$inferSelect, latestActivity?: string) {
