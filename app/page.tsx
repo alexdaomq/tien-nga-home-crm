@@ -29,9 +29,6 @@ import {
 } from "../lib/labels";
 import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, SOURCES, STAGE_ALIAS } from "../db/enums";
 
-// 5 tab chính hiện trên thanh menu điện thoại; các tab còn lại nằm trong nút "Thêm".
-const PRIMARY_NAV = new Set(["dashboard", "today", "pipeline", "customers", "appointments"]);
-
 const funnelStageOptions = FUNNEL_STAGES.map((value) => ({ value, label: FUNNEL_STAGE_LABEL[value] }));
 const priorityOptions = PRIORITIES.map((value) => ({ value, label: `${PRIORITY_EMOJI[value]} ${PRIORITY_LABEL[value]}` }));
 
@@ -57,7 +54,6 @@ export default function Home() {
 
   const [selected, setSelected] = useState<Customer | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [formCustomer, setFormCustomer] = useState<Customer | null>(null);
@@ -402,32 +398,11 @@ export default function Home() {
         </div>
         <nav>
           {NAV.map((item) => (
-            <button
-              key={item.key}
-              className={`${view === item.key ? "active" : ""}${PRIMARY_NAV.has(item.key) ? "" : " nav-extra"}`}
-              onClick={() => { setView(item.key); setMoreOpen(false); }}
-            >
+            <button key={item.key} className={view === item.key ? "active" : ""} onClick={() => setView(item.key)}>
               <i>{item.icon}</i><span>{item.label}</span>{item.badge ? <em>{item.badge}</em> : null}
             </button>
           ))}
-          <button className={`nav-more-btn${!PRIMARY_NAV.has(view) ? " active" : ""}`} onClick={() => setMoreOpen((v) => !v)}>
-            <i>⋯</i><span>Thêm</span>
-          </button>
         </nav>
-        {moreOpen && <div className="nav-more-backdrop" onClick={() => setMoreOpen(false)} />}
-        {moreOpen && (
-          <div className="nav-more-sheet">
-            {NAV.filter((item) => !PRIMARY_NAV.has(item.key)).map((item) => (
-              <button
-                key={item.key}
-                className={view === item.key ? "active" : ""}
-                onClick={() => { setView(item.key); setMoreOpen(false); }}
-              >
-                <i>{item.icon}</i><span>{item.label}</span>{item.badge ? <em>{item.badge}</em> : null}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="sidebar-note">
           <span>!</span>
           <div><strong>{notifTotal} mục cần chú ý</strong><small>Mở “Việc hôm nay” để xử lý trước.</small></div>
