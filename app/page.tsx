@@ -309,6 +309,15 @@ export default function Home() {
     await refreshCore();
   }
 
+  async function changePriority(customer: Customer, priority: string) {
+    if (priority === customer.priority) return;
+    const ok = await patchCustomer(customer.id, { priority });
+    if (!ok) return;
+    await addActivity(customer.id, `ĐỔI MỨC QUAN TÂM: ${PRIORITY_LABEL[priority]}`);
+    setToast(`Đã đổi mức quan tâm: ${PRIORITY_LABEL[priority]}`);
+    await refreshCore();
+  }
+
   async function applyWon(payload: WonPayload) {
     const customer = won.customer;
     setWon({ open: false, customer: null });
@@ -494,6 +503,7 @@ export default function Home() {
           onEditNextAction={(c) => setNa({ open: true, customer: c, task: null, mode: "edit" })}
           onCreateNextAction={(c) => setNa({ open: true, customer: c, task: null, mode: "create" })}
           onChangeStage={changeStage}
+          onChangePriority={changePriority}
           onRequestLost={(c) => setLost({ open: true, customer: c })}
           onDelete={deleteCustomer}
         />
