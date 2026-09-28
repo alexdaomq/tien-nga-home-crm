@@ -168,7 +168,7 @@ export default function CustomerDetail(props: Props) {
             </div>
             <div className="cdx-meta">
               <span>📞 {customer.phone}</span>
-              {customer.ward ? <span>📍 {customer.ward}</span> : null}
+              {customer.address || customer.ward ? <span>📍 {customer.address || customer.ward}</span> : null}
               <span>👤 Sale phụ trách: {customer.owner}</span>
               <span>🔗 {customer.source}{customer.campaign ? ` · ${customer.campaign}` : ""}</span>
             </div>
@@ -205,6 +205,7 @@ export default function CustomerDetail(props: Props) {
             <section className="cdx-card">
               <div className="cdx-card-title">📋 HỒ SƠ NHU CẦU</div>
               <dl className="cdx-facts">
+                <div><dt>Địa chỉ</dt><dd>{[customer.address, customer.ward && !customer.address.includes(customer.ward) ? customer.ward : ""].filter(Boolean).join(" · ") || "Chưa rõ"}</dd></div>
                 <div><dt>Công trình</dt><dd>{PROJECT_TYPE_LABEL[customer.projectType] ?? "—"}{customer.numberOfFloors ? ` · ${customer.numberOfFloors} tầng` : ""}</dd></div>
                 <div><dt>Đang quan tâm</dt><dd>{products.length > 0 ? products.join(", ") : (customer.need || "Chưa ghi nhận")}</dd></div>
                 <div><dt>Số phòng tắm</dt><dd>{customer.numberOfBathrooms || "—"}</dd></div>

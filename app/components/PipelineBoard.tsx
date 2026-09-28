@@ -108,7 +108,7 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
                             {PRIORITY_EMOJI[customer.priority]} {PRIORITY_LABEL[customer.priority]}
                           </span>
                         </div>
-                        <div className="pipe-card-meta">{customer.ward || "—"} · {customer.need || "Chưa rõ nhu cầu"}</div>
+                        <div className="pipe-card-meta">{customer.ward || customer.address || "—"} · {customer.need || "Chưa rõ nhu cầu"}</div>
                         <div className="pipe-card-value">{money(customer.value)}</div>
                         {noNextAction ? (
                           <div className="pipe-warning">⚠ CHƯA CÓ VIỆC TIẾP THEO</div>

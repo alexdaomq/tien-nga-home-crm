@@ -421,7 +421,7 @@ export default function Home() {
                 {searchResults.map((c) => (
                   <button key={c.id} onClick={() => openCustomerById(c.id)}>
                     <strong>{c.fullName}</strong>
-                    <small>{c.phone} · {c.ward || "—"} · {FUNNEL_STAGE_LABEL[c.funnelStage]}</small>
+                    <small>{c.phone} · {c.ward || c.address || "—"} · {FUNNEL_STAGE_LABEL[c.funnelStage]}</small>
                   </button>
                 ))}
               </div>
@@ -663,7 +663,7 @@ function Dashboard(props: {
         <DashList title="Khách chưa liên hệ" tone="danger" empty="Không còn khách nào chờ liên hệ.">
           {newLeadsToday.slice(0, 8).map((c) => (
             <button key={c.id} className="dash-row" onClick={() => onOpenCustomer(c.id)}>
-              <strong>{c.fullName}</strong><small>{c.source} · {c.ward || "—"} · {c.owner}</small>
+              <strong>{c.fullName}</strong><small>{c.source} · {c.ward || c.address || "—"} · {c.owner}</small>
             </button>
           ))}
         </DashList>
@@ -777,7 +777,7 @@ function CustomersTable(props: {
             return (
               <button key={c.id} className="crm-table-row" style={{ gridTemplateColumns: COLS, ["--row-accent" as string]: FUNNEL_STAGE_COLOR[c.funnelStage] }} onClick={() => onOpen(c)}>
                 <div className="crm-cell"><strong>{c.fullName}</strong><small>{c.phone}</small></div>
-                <div className="crm-cell"><span>{c.ward || "—"}</span></div>
+                <div className="crm-cell"><span>{c.ward || c.address || "—"}</span></div>
                 <div className="crm-cell"><span className="status-pill" style={{ ["--status" as string]: FUNNEL_STAGE_COLOR[c.funnelStage] }}>{FUNNEL_STAGE_LABEL[c.funnelStage]}</span></div>
                 <div className="crm-cell"><span className="temp-pill" style={{ ["--temp" as string]: PRIORITY_COLOR[c.priority] }}>{PRIORITY_EMOJI[c.priority]}</span></div>
                 <div className="crm-cell"><strong>{money(c.value)}</strong></div>
