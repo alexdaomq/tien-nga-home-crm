@@ -13,7 +13,8 @@ import { TEAM_MEMBERS } from "../../../../lib/types";
 //   - address  : Địa chỉ                    (tuỳ chọn)
 //   - need     : Nhu cầu (chuỗi hoặc mảng)  (tuỳ chọn)
 //   - owner    : Nhân viên Sales phụ trách  (tuỳ chọn; trống -> "Chưa phân công")
-//   (chấp nhận vài tên khác: name / sdt / diaChi / nhuCau / sales / nhanVien)
+//   - note     : Ghi chú -> lưu nguyên văn vào Lịch sử chăm sóc (tuỳ chọn)
+//   (chấp nhận vài tên khác: name / sdt / diaChi / nhuCau / sales / nhanVien / ghiChu)
 //
 // Bảo mật:   header x-webhook-secret khớp app_settings.webhookSecret.
 // Chống spam: tối đa MAX_INTAKE_PER_MINUTE khách/60 giây qua API này.
@@ -80,6 +81,8 @@ export async function POST(request: Request) {
     const needRaw = body.need ?? body.nhuCau ?? "";
     const need = (Array.isArray(needRaw) ? needRaw.map(String).join("; ") : String(needRaw)).trim();
     const owner = canonicalOwner(String(body.owner ?? body.sales ?? body.nhanVien ?? ""));
+    const noteRaw = body.note ?? body.ghiChu ?? "";
+    const note = (Array.isArray(noteRaw) ? noteRaw.map(String).join("\n") : String(noteRaw)).trim();
 
     if (fullName.length < 2) {
       return Response.json({ code: "INVALID", message: "Thiếu tên khách hàng." }, { status: 400 });
@@ -122,6 +125,11 @@ export async function POST(request: Request) {
       content: `API tự động ghi nhận: ${fullName} · ${phone}${address ? ` · ${address}` : ""}${need ? ` · nhu cầu: ${need}` : ""}. Sale phụ trách: ${owner}.`,
       enteredBy: SOURCE_TAG,
     });
+
+    // Ghi chú -> một dòng riêng trong Lịch sử chăm sóc (chèn sau nên hiện trên cùng).
+    if (note) {
+      await db.insert(activities).values({ customerId: customer.id, content: note, enteredBy: SOURCE_TAG });
+    }
 
     return Response.json({
       code: "CREATED",
