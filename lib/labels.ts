@@ -25,7 +25,7 @@ export const FUNNEL_STAGE_COLOR: Record<string, string> = {
   negotiating: "#d86400",
   won: "#08751d",
   delivering: "#128f18",
-  aftercare: "#0f9b8e",
+  aftercare: "#d63384",
   lost: "#94a3a0",
   paused: "#8b8b8b",
 };

@@ -1589,3 +1589,33 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .cdx-track-step { min-width: 92px; }
   .cdx-facts > div { grid-template-columns: 120px 1fr; }
 }
+
+/* ===== Phễu pipeline (Dashboard) ===== */
+.fnl { display: flex; flex-direction: column; gap: 3px; max-width: 760px; margin: 10px auto 6px; padding: 0 6px; }
+.fnl-row { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(150px, 1fr); align-items: center; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.fnl-shape { position: relative; display: block; height: 42px; }
+.fnl-band { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); transition: filter .15s, opacity .15s; }
+.fnl-band i { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .92); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); transform: translate(-50%, -50%); }
+.fnl-band em { position: absolute; top: 50%; transform: translate(-100%, -50%); font-style: normal; font-size: 11px; font-weight: 800; color: #fff; }
+.fnl-lead { position: absolute; top: 50%; right: -10px; border-top: 1.5px dashed color-mix(in srgb, var(--c) 55%, #fff); }
+.fnl-label { display: flex; flex-direction: column; gap: 1px; padding-left: 18px; border-left: 3px solid var(--c); margin-left: 10px; }
+.fnl-label b { font-size: 13px; font-weight: 700; color: var(--ink); }
+.fnl-label small { font-size: 11.5px; color: var(--muted); }
+.fnl-row.empty .fnl-band { opacity: .35; }
+.fnl-row.empty .fnl-label b { color: var(--muted); font-weight: 600; }
+.fnl-row:hover .fnl-band { filter: brightness(1.1) saturate(1.1); opacity: 1; }
+.fnl-row:hover .fnl-label b { color: var(--c); }
+.fnl-row:focus-visible { outline: 2px solid var(--warm); outline-offset: 2px; border-radius: 6px; }
+.fnl-lost { --c: #94a3a0; margin-top: 8px; }
+.fnl-lost .fnl-shape { height: 34px; display: flex; align-items: center; justify-content: center; }
+.fnl-drain { padding: 5px 14px; border-radius: 999px; background: #eef1f0; border: 1px dashed #94a3a0; color: #5e6b67; font-size: 12px; font-weight: 700; }
+.fnl-lost:hover .fnl-drain { background: #e3e8e6; }
+@media (max-width: 560px) {
+  .fnl { padding: 0; }
+  .fnl-row { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .fnl-shape { height: 36px; }
+  .fnl-label { padding-left: 10px; margin-left: 6px; }
+  .fnl-label b { font-size: 12px; }
+  .fnl-label small { font-size: 10.5px; }
+  .fnl-lead { right: -6px; }
+}

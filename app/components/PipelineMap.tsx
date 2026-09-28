@@ -23,7 +23,7 @@ const NODES: { key: string; label: string; color: string }[] = [
   ...PIPELINE_STAGES.map((s) => ({ key: s, label: FUNNEL_STAGE_LABEL[s], color: FUNNEL_STAGE_COLOR[s] })),
   { key: LOST_KEY, label: "Không chốt", color: "#94a3a0" },
 ];
-const LINE_GRADIENT = "linear-gradient(90deg,#8b8b8b,#3a7bd5,#f5a623,#9b59b6,#7d5bd0,#0f9b8e,#e4542d,#d86400,#08751d,#0f9b8e,#94a3a0)";
+const LINE_GRADIENT = "linear-gradient(90deg,#8b8b8b,#3a7bd5,#f5a623,#9b59b6,#7d5bd0,#0f9b8e,#e4542d,#d86400,#08751d,#d63384,#94a3a0)";
 
 function stageColumnOf(stage: string): string {
   if ((PIPELINE_STAGES as readonly string[]).includes(stage)) return stage;

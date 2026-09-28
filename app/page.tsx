@@ -9,6 +9,7 @@ import MetricsView from "./components/MetricsView";
 import TodayView from "./components/TodayView";
 import PipelineBoard from "./components/PipelineBoard";
 import PipelineMap from "./components/PipelineMap";
+import PipelineFunnel from "./components/PipelineFunnel";
 import CustomerDetail from "./components/CustomerDetail";
 import CustomerForm from "./components/CustomerForm";
 import NextActionModal, { NextActionPayload } from "./components/NextActionModal";
@@ -626,23 +627,8 @@ function Dashboard(props: {
       </section>
 
       <div className="map-card" style={{ marginTop: 16 }}>
-        <div className="dashboard-card-title"><strong>Phễu pipeline</strong><span>{props.totalCustomers} khách</span></div>
-        <div className="pipeline-track">
-          <button style={{ ["--stage" as string]: "#8b8b8b" }} onClick={() => onGoStage("uncontacted")}>
-            <div className="stage-step">{funnelCounts.get("uncontacted") ?? 0}</div>
-            <small>Chưa liên hệ</small>
-          </button>
-          {PIPELINE_STAGES.map((stage) => (
-            <button key={stage} style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[stage] }} onClick={() => onGoStage(stage)}>
-              <div className="stage-step">{funnelCounts.get(stage) ?? 0}</div>
-              <small>{FUNNEL_STAGE_LABEL[stage]}</small>
-            </button>
-          ))}
-          <button style={{ ["--stage" as string]: "#94a3a0" }} onClick={() => onGoStage("lost")}>
-            <div className="stage-step">{funnelCounts.get("lost") ?? 0}</div>
-            <small>Không chốt</small>
-          </button>
-        </div>
+        <div className="dashboard-card-title"><strong>Phễu pipeline</strong><span>{props.totalCustomers} khách · bấm tầng để xem danh sách</span></div>
+        <PipelineFunnel counts={funnelCounts} onGoStage={onGoStage} />
       </div>
 
       <div className="dashboard-lower" style={{ marginTop: 16 }}>
