@@ -177,6 +177,7 @@ export default function CustomerDetail(props: Props) {
             <a className="qa-btn call" href={`tel:${phoneDigits}`}>📞 Gọi khách</a>
             <a className="qa-btn zalo" href={`https://zalo.me/${phoneDigits}`} target="_blank" rel="noreferrer">💬 Nhắn Zalo</a>
             <button className="qa-btn edit" onClick={() => onEdit(customer)}>✎ Sửa hồ sơ</button>
+            <button className="qa-btn del" onClick={() => onDelete(customer)}>🗑 Xoá</button>
           </div>
         </div>
 
@@ -326,9 +327,6 @@ export default function CustomerDetail(props: Props) {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 16, textAlign: "right" }}>
-                    <button className="hub-delete-button" onClick={() => onDelete(customer)}>Xoá khách hàng</button>
-                  </div>
                 </div>
               )}
             </section>
