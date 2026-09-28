@@ -120,20 +120,20 @@ export default function CustomerForm({ mode, customer, person, saving, onSubmit,
         <form onSubmit={submit} className="modal-grid-flow">
           <div className="form-section-title"><span>01</span><strong>Thông tin tối thiểu</strong></div>
           <div className="form-grid-2">
-            <input placeholder="Họ tên khách hàng *" required value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
-            <input placeholder="Số điện thoại *" required value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-            <select value={form.source} onChange={(e) => set("source", e.target.value)}>
+            <label className="fld">Họ tên khách *<input placeholder="VD: Anh Biên" required value={form.fullName} onChange={(e) => set("fullName", e.target.value)} /></label>
+            <label className="fld">Số điện thoại *<input type="tel" inputMode="tel" placeholder="VD: 0912 345 678" required value={form.phone} onChange={(e) => set("phone", e.target.value)} /></label>
+            <label className="fld">Địa chỉ / khu vực<input placeholder="VD: Kim Chung, Đông Anh" value={form.ward} onChange={(e) => set("ward", e.target.value)} /></label>
+            <label className="fld">Khách biết đến shop qua<select value={form.source} onChange={(e) => set("source", e.target.value)}>
               {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <input placeholder="Khu vực (VD: Đông Anh)" value={form.ward} onChange={(e) => set("ward", e.target.value)} />
-            <select value={form.owner} onChange={(e) => set("owner", e.target.value)}>
+            </select></label>
+            <label className="fld">Sale phụ trách<select value={form.owner} onChange={(e) => set("owner", e.target.value)}>
               {TEAM_MEMBERS.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
-            <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
+            </select></label>
+            <label className="fld">Mức độ quan tâm<select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
               {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_EMOJI[p]} {PRIORITY_LABEL[p]}</option>)}
-            </select>
+            </select></label>
           </div>
-          <input placeholder="Nhu cầu (VD: Gạch + 2 WC)" value={form.need} onChange={(e) => set("need", e.target.value)} />
+          <label className="fld">Khách cần gì<input placeholder="VD: Gạch + 2 WC" value={form.need} onChange={(e) => set("need", e.target.value)} /></label>
 
           <div className="form-section-title"><span>02</span><strong>Nhu cầu sản phẩm</strong></div>
           <div className="chip-multi">

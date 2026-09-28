@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb, getOrCreateSettings } from "../../../../db";
 import { activities, customers } from "../../../../db/schema";
 import { TEAM_MEMBERS } from "../../../../lib/types";
+import { todayISO } from "../../../../lib/format";
 
 // ============================================================================
 // POST /api/customers/intake — thêm khách từ luồng tự động bên ngoài (n8n...).
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       lastContact: "TẠO TỰ ĐỘNG TỪ API",
       nextAction: "Gọi xác nhận khách mới (nguồn tự động)",
       nextActionType: "goi_khach",
-      nextContactDate: new Date().toISOString().slice(0, 10),
+      nextContactDate: todayISO(),
       nextActionTime: "09:00",
     }).returning();
 

@@ -574,6 +574,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .appointment-owner i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #dff0e9; color: #286b59; font-size: 10px; font-style: normal; }
 .complete-appointment { min-height: 42px; border: 1px solid #cfded8; border-radius: 11px; background: #fff; cursor: pointer; color: #3b645c; font-size: 11px; font-weight: 700; }
 .complete-appointment:hover { background: #eaf7f1; border-color: #8db9aa; }
+.appt-row { display: grid; grid-template-columns: 96px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e6ece9; }
+.appt-row.today { background: #fff7ee; }
+.appt-row.overdue { background: #fdeee7; }
+.appt-row .crm-appointment-date { display: grid; gap: 2px; }
+.appt-row .crm-appointment-date strong { font-size: 17px; color: var(--ink); }
+.appt-row .crm-appointment-date span { font-size: 13px; color: var(--muted); font-weight: 700; }
+.appt-row .crm-appointment-date em { font-style: normal; font-size: 11px; font-weight: 800; color: #c1391a; }
+.appt-row.today .crm-appointment-date em { color: var(--warm-dark); }
+.appt-info { display: grid; gap: 3px; min-width: 0; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; }
+.appt-info:disabled { cursor: default; }
+.appt-info strong { font-size: 15px; color: var(--ink); }
+.appt-info small { font-size: 12.5px; color: var(--muted); }
+.appt-actions { display: flex; gap: 8px; align-items: center; }
+.appt-actions .complete-appointment { padding: 0 14px; font-size: 13px; }
+@media (max-width: 720px) {
+  .appt-row { grid-template-columns: 78px 1fr; }
+  .appt-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
 
 .empty-state { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #7d8c89; text-align: center; }
 .empty-state > span { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 14px; border-radius: 50%; background: #e2f2eb; color: #2f7a64; font-size: 23px; }
@@ -1200,13 +1218,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .temp-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--temp, #333); background: color-mix(in srgb, var(--temp, #333) 12%, #fff); border: 1px solid color-mix(in srgb, var(--temp, #333) 30%, #fff); white-space: nowrap; }
 
 /* --- Next Action modal grid --- */
-.na-modal { max-width: 560px; }
+.na-modal { max-width: 560px; padding-bottom: 20px; }
+.na-modal > *:not(.modal-title) { margin-left: 24px; margin-right: 24px; }
+.simple-modal.na-modal > input, .simple-modal.na-modal > textarea { width: calc(100% - 48px); }
+@media (max-width: 560px) {
+  .na-modal > *:not(.modal-title) { margin-left: 16px; margin-right: 16px; }
+  .simple-modal.na-modal > input, .simple-modal.na-modal > textarea { width: calc(100% - 32px); }
+}
 .na-label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; }
 .na-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
 .na-grid button { padding: 9px 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .12s; }
 .na-grid button:hover { border-color: var(--warm); }
 .na-grid button.active { background: var(--teal); color: #fff; border-color: var(--teal); }
 .na-grid button.active.danger { background: #c1391a; border-color: #c1391a; }
+.na-grid button { font-size: 13.5px; padding: 11px 8px; }
+.na-grid .na-more { border-style: dashed; color: var(--muted); }
+.na-quick-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.na-quick-days button { padding: 11px 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 13.5px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.na-quick-days button:hover { border-color: var(--warm); }
+.na-quick-days button.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+@media (max-width: 560px) { .na-quick-days { grid-template-columns: repeat(2, 1fr); } }
 .na-modal input, .na-modal textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .na-modal textarea { min-height: 64px; resize: vertical; }
 .danger-button { background: #c1391a !important; }
@@ -1328,9 +1359,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* ============ FORM helpers ============ */
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-grid-2 input, .form-grid-2 select, .modal-grid-flow > input, .modal-grid-flow > textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-.fld { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
-.chip-multi { display: flex; flex-wrap: wrap; gap: 7px; }
-.chip-multi button { font-size: 12px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; cursor: pointer; }
+.fld { display: grid; gap: 5px; font-size: 12.5px; font-weight: 700; color: #41625b; }
+.fld input, .fld select, .fld textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; font-weight: 500; color: var(--ink); }
+.chip-multi { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-multi button { font-size: 13.5px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; cursor: pointer; }
 .chip-multi button.active { background: var(--teal); color: #fff; border-color: var(--teal); }
 .cell-warn { color: #cf6400; font-weight: 700; }
 .switch-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; }
@@ -1404,6 +1436,46 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .seg-chips button { padding: 8px 15px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; color: #41625b; cursor: pointer; transition: all .12s; }
 .seg-chips button:hover { border-color: var(--warm); }
 .seg-chips button.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+.seg-chips { align-items: center; }
+.seg-chips .filter-toggle { border-style: dashed; }
+.seg-chips .filter-toggle.on { border-style: solid; border-color: var(--warm); color: var(--warm-dark); background: #fff7ee; }
+.seg-chips .filter-clear { border-color: #f0b6a6; color: #c1391a; background: #fdeee7; }
+.seg-count { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--muted); }
+
+/* Nút chuyển bước trên thẻ Tiến trình (chạy được trên cảm ứng). */
+.pipe-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+.pipe-next-btn { padding: 6px 11px; border: 1px solid color-mix(in srgb, var(--stage) 38%, #fff); border-radius: 999px; background: color-mix(in srgb, var(--stage) 12%, #fff); color: var(--stage); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.pipe-next-btn:hover { background: var(--stage); color: #fff; }
+
+/* Bảng khách: chữ to hơn cho dễ đọc. */
+.customer-hub-table .crm-table-head { font-size: 11.5px; }
+.customer-hub-table .crm-cell strong { font-size: 14px; }
+.customer-hub-table .crm-cell small { font-size: 12px; }
+.customer-hub-table .crm-cell span { font-size: 13px; }
+
+/* Điện thoại: bảng khách -> thẻ, không phải kéo ngang. */
+@media (max-width: 720px) {
+  .customer-hub-table .crm-table-scroll { overflow-x: visible; }
+  .customer-hub-table .crm-table-head { display: none; }
+  .customer-hub-table .crm-table-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; min-height: 0; padding: 12px 14px; }
+  .customer-hub-table .crm-table-row .crm-cell { height: auto; padding: 0; border-right: 0; }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(1) { order: 1; flex: 1 1 55%; }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(3) { order: 2; flex: 0 0 auto; }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(7) { order: 3; flex: 1 1 100%; }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(7) span { white-space: normal; }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(2),
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(4),
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(6) { order: 4; flex: 0 0 auto; color: var(--muted); }
+  .customer-hub-table .crm-table-row .crm-cell:nth-child(5) { display: none; }
+  .seg-count { flex-basis: 100%; margin-left: 0; }
+}
+
+/* Điện thoại: ô tìm khách xuống dòng riêng, rộng hết màn hình (thao tác chính của sale). */
+@media (max-width: 860px) {
+  .simple-topbar .global-search { order: 3; flex: 1 1 100%; max-width: none; }
+  .simple-topbar .global-search input { padding: 12px 14px; font-size: 15px; }
+  .simple-topbar .role-pill { display: none; }
+}
 .load-more { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 16px; }
 .load-more span { font-size: 12px; color: var(--muted); }
 
@@ -1486,12 +1558,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .doc-upload .save-button { width: 100%; }
 
 /* ===== Chi tiết khách hàng — trang 2 cột ===== */
-.cdx-overlay { position: fixed; inset: 0; z-index: 60; background: var(--canvas); overflow-y: auto; animation: drawer-in .2s ease-out; }
-.cdx-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px; }
+/* z-index 80: nằm TRÊN thanh menu điện thoại (70), DƯỚI các hộp thoại (100). */
+.cdx-overlay { position: fixed; inset: 0; z-index: 80; background: var(--canvas); overflow-y: auto; animation: drawer-in .2s ease-out; }
+.cdx-page { max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
 
-.cdx-crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 16px; }
-.cdx-back { border: none; background: none; color: var(--teal); font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; }
-.cdx-crumb-cur { font-weight: 600; }
+.cdx-crumb { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -24px 16px; padding: 12px 24px; background: color-mix(in srgb, var(--canvas) 94%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.cdx-back { flex: 0 0 auto; padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--teal); font-weight: 800; font-size: 14px; cursor: pointer; }
+.cdx-back:hover { border-color: var(--teal); }
+.cdx-crumb-cur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cdx-crumb-cur strong { color: var(--ink); }
+
+.cdx-stage-now { display: inline-block; margin-bottom: 10px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 13%, #fff); border: 1px solid color-mix(in srgb, var(--c) 35%, #fff); }
+.cdx-stage-next { display: block; width: 100%; margin-bottom: 8px; padding: 13px 12px; border: 0; border-radius: 12px; background: var(--c); color: #fff; font-size: 14.5px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 16px color-mix(in srgb, var(--c) 30%, transparent); }
+.cdx-stage-next:hover { filter: brightness(1.07); }
+.cdx-stage-pick { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 13px; color: var(--muted); }
 
 .cdx-head { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; flex-wrap: wrap; }
 .cdx-avatar { flex: 0 0 auto; width: 66px; height: 66px; border-radius: 50%; background: color-mix(in srgb, var(--warm) 16%, #fff); color: var(--warm-dark); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
@@ -1581,8 +1661,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .cdx-suggest-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 
 @media (max-width: 900px) {
-  .cdx-cols { grid-template-columns: 1fr; }
-  .cdx-page { padding: 16px 14px 50px; }
+  /* Điện thoại: 1 cột, việc cần làm + chuyển bước + ghi chú lên đầu (thứ tự qua --mo). */
+  .cdx-cols { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+  .cdx-left, .cdx-right { display: contents; }
+  .cdx-cols .cdx-card { order: var(--mo, 50); }
+  .cdx-page { padding: 0 14px 50px; }
+  .cdx-crumb { margin: 0 -14px 14px; padding: 10px 14px; }
+  .cdx-head { gap: 12px; }
+  .cdx-head-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cdx-head-actions .qa-btn { justify-content: center; padding: 12px 10px; font-size: 14px; }
   .cdx-banner { flex-wrap: wrap; }
   .cdx-banner-sub { margin-left: 0; text-align: left; width: 100%; }
   .cdx-track { overflow-x: auto; }

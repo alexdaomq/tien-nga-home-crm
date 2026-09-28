@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb, getOrCreateSettings } from "../../../../db";
 import { activities, customers } from "../../../../db/schema";
+import { todayISO } from "../../../../lib/format";
 
 // Điểm nối cho n8n / AI đọc Business Suite (Messenger, Instagram...): khi đã trích
 // xuất đủ họ tên + SĐT (+ địa chỉ nếu có) từ hội thoại, gọi endpoint này để tự động
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       notes: note ? `Ghi nhận từ Business Suite: ${note}` : "Tạo tự động từ Business Suite",
       lastContact: "AI TỰ ĐỘNG GHI NHẬN TỪ BUSINESS SUITE",
       nextAction: "Xác nhận thông tin khách mới từ Business Suite",
-      nextContactDate: new Date().toISOString().slice(0, 10),
+      nextContactDate: todayISO(),
     }).returning();
 
     await db.insert(activities).values({ customerId: customer.id, content: activityContent, enteredBy: "AI Business Suite" });

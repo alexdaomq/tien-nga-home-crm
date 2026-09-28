@@ -31,18 +31,22 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
     return map;
   }, [customers]);
 
-  const openTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
+  const newLeads = useMemo(
+    () => customers.filter((c) => c.funnelStage === "lead" && c.contactResult === "chua_lien_he"),
+    [customers],
+  );
+  // Khách chưa liên hệ đã có nhóm riêng -> không lặp lại việc "gọi lần đầu" của họ ở nhóm khác.
+  const newLeadIds = useMemo(() => new Set(newLeads.map((c) => c.id)), [newLeads]);
+  const openTasks = useMemo(
+    () => tasks.filter((task) => task.status === "open" && (task.customerId == null || !newLeadIds.has(task.customerId))),
+    [tasks, newLeadIds],
+  );
   const overdue = useMemo(() => openTasks.filter((task) => task.dueDate < today), [openTasks, today]);
   const dueToday = useMemo(() => openTasks.filter((task) => task.dueDate === today), [openTasks, today]);
   const weekAhead = addDays(today, 7);
   const upcoming = useMemo(
     () => openTasks.filter((task) => task.dueDate > today && task.dueDate <= weekAhead),
     [openTasks, today, weekAhead],
-  );
-
-  const newLeads = useMemo(
-    () => customers.filter((c) => c.funnelStage === "lead" && c.contactResult === "chua_lien_he"),
-    [customers],
   );
   const hotCustomers = useMemo(
     () => customers
@@ -62,7 +66,7 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
               <>
                 <span className="mini-pill" style={{ ["--status" as string]: FUNNEL_STAGE_COLOR[customer.funnelStage] }}>{FUNNEL_STAGE_LABEL[customer.funnelStage]}</span>
                 <span className="mini-temp">{PRIORITY_EMOJI[customer.priority]} {PRIORITY_LABEL[customer.priority]}</span>
-                <span className="today-money">{money(customer.value)}</span>
+                {customer.value ? <span className="today-money">{money(customer.value)}</span> : null}
               </>
             ) : null}
           </div>
@@ -91,7 +95,7 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
           <div className="today-card-need">
             <span className="mini-pill" style={{ ["--status" as string]: FUNNEL_STAGE_COLOR[customer.funnelStage] }}>{FUNNEL_STAGE_LABEL[customer.funnelStage]}</span>
             <span className="mini-temp">{PRIORITY_EMOJI[customer.priority]} {PRIORITY_LABEL[customer.priority]}</span>
-            <span className="today-money">{money(customer.value)}</span>
+            {customer.value ? <span className="today-money">{money(customer.value)}</span> : null}
           </div>
           {noNext ? (
             <div className="today-next warn"><span>⚠ CHƯA CÓ VIỆC TIẾP THEO</span></div>
@@ -114,7 +118,7 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
         <div>
           <p>VIỆC HÔM NAY · {person}</p>
           <h1>Hôm nay cần xử lý {totalToDo} việc</h1>
-          <span>Quá hạn {overdue.length} · Lead mới {newLeads.length} · Đến hạn hôm nay {dueToday.length}</span>
+          <span>Quá hạn {overdue.length} · Chưa liên hệ {newLeads.length} · Hẹn hôm nay {dueToday.length}</span>
         </div>
         <button className="mobile-add" onClick={onAddTask}>＋ Thêm việc</button>
       </section>

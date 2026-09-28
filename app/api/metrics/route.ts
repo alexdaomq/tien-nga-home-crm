@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { appSettings, customers, dailyMetrics, projectItems, projects } from "../../../db/schema";
-import { median, minutesBetween, percent } from "../../../lib/format";
+import { median, minutesBetween, percent, todayISO } from "../../../lib/format";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Có lỗi xảy ra với chỉ số vận hành.";
@@ -110,7 +110,7 @@ async function computeCrossSellKpis(db: ReturnType<typeof getDb>) {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const month = url.searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
+    const month = url.searchParams.get("month") ?? todayISO().slice(0, 7);
     const db = getDb();
 
     const [allCustomers, allDailyMetrics, marginRate] = await Promise.all([

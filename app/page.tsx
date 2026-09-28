@@ -28,10 +28,10 @@ import {
   ROLE_LABEL,
   ACTION_TYPE_LABEL,
   PROJECT_STAGE_LABEL,
+  LOSS_REASON_LABEL,
 } from "../lib/labels";
-import { FUNNEL_STAGES, PIPELINE_STAGES, PRIORITIES, PROJECT_STAGES, SOURCES, STAGE_ALIAS } from "../db/enums";
+import { PIPELINE_STAGES, PRIORITIES, PROJECT_STAGES, SOURCES, STAGE_ALIAS } from "../db/enums";
 
-const funnelStageOptions = FUNNEL_STAGES.map((value) => ({ value, label: FUNNEL_STAGE_LABEL[value] }));
 const priorityOptions = PRIORITIES.map((value) => ({ value, label: `${PRIORITY_EMOJI[value]} ${PRIORITY_LABEL[value]}` }));
 
 type NaState = { open: boolean; customer: Customer | null; task: Task | null; mode: "complete" | "edit" | "create" };
@@ -177,6 +177,12 @@ export default function Home() {
     () => visibleCustomers.filter((c) => c.priority === "hot" && !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage)),
     [visibleCustomers],
   );
+  // Số trên menu "Việc hôm nay": khớp đúng màn hình (khách chưa liên hệ không bị đếm 2 lần).
+  const todayBadge = useMemo(() => {
+    const leadIds = new Set(newLeads.map((c) => c.id));
+    const notLead = (t: Task) => t.customerId == null || !leadIds.has(t.customerId);
+    return overdueTasks.filter(notLead).length + dueTodayTasks.filter(notLead).length + newLeads.length;
+  }, [overdueTasks, dueTodayTasks, newLeads]);
   const showroomToday = useMemo(() => visibleCustomers.filter((c) => c.appointmentDate.slice(0, 10) === today && !c.arrived), [visibleCustomers, today]);
   const siteVisitToday = useMemo(() => visibleCustomers.filter((c) => c.estimatedTileDate.slice(0, 10) === today), [visibleCustomers, today]);
 
@@ -350,7 +356,7 @@ export default function Home() {
       lostBy: person,
     });
     if (!ok) return;
-    await addActivity(customer.id, `MẤT KHÁCH: ${payload.lossReason}${payload.lostCompetitor ? ` · ${payload.lostCompetitor}` : ""}${payload.lostNote ? ` · ${payload.lostNote}` : ""}`);
+    await addActivity(customer.id, `KHÔNG CHỐT: ${LOSS_REASON_LABEL[payload.lossReason] ?? payload.lossReason}${payload.lostCompetitor ? ` · ${payload.lostCompetitor}` : ""}${payload.lostNote ? ` · ${payload.lostNote}` : ""}`);
     setToast("Đã đánh dấu không chốt");
     await refreshCore();
   }
@@ -380,10 +386,12 @@ export default function Home() {
   const customerProjects = selected ? projects.filter((p) => p.customerId === selected.id) : [];
   const selectedTasks = selected ? visibleTasks.filter((t) => t.customerId === selected.id) : [];
 
-  const NAV: { key: ViewKey; icon: string; label: string; badge?: number }[] = [
-    { key: "dashboard", icon: "⌂", label: "Dashboard" },
-    { key: "today", icon: "✓", label: "Việc hôm nay", badge: overdueTasks.length + dueTodayTasks.length + newLeads.length },
-    { key: "pipeline", icon: "▤", label: "Pipeline" },
+  // Sale chỉ thấy các tab làm việc hằng ngày; Báo cáo (chứa khoá API, token quảng cáo) và Cài đặt dành cho quản lý.
+  const MANAGER_ONLY: ViewKey[] = ["metrics", "settings"];
+  const NAV_ALL: { key: ViewKey; icon: string; label: string; badge?: number }[] = [
+    { key: "dashboard", icon: "⌂", label: "Tổng quan" },
+    { key: "today", icon: "✓", label: "Việc hôm nay", badge: todayBadge },
+    { key: "pipeline", icon: "▤", label: "Tiến trình" },
     { key: "customers", icon: "◎", label: "Khách hàng", badge: visibleCustomers.length },
     { key: "appointments", icon: "□", label: "Lịch" },
     { key: "projects", icon: "⌗", label: "Công trình" },
@@ -392,6 +400,8 @@ export default function Home() {
     { key: "suppliers", icon: "▦", label: "Nhà cung cấp" },
     { key: "settings", icon: "⚙", label: "Cài đặt" },
   ];
+  const NAV = NAV_ALL.filter((item) => isManager || !MANAGER_ONLY.includes(item.key));
+  const activeView: ViewKey = !isManager && MANAGER_ONLY.includes(view) ? "today" : view;
 
   return (
     <div className="simple-crm">
@@ -402,7 +412,7 @@ export default function Home() {
         </div>
         <nav>
           {NAV.map((item) => (
-            <button key={item.key} className={view === item.key ? "active" : ""} onClick={() => setView(item.key)}>
+            <button key={item.key} className={activeView === item.key ? "active" : ""} onClick={() => { setView(item.key); setSelected(null); }}>
               <i>{item.icon}</i><span>{item.label}</span>{item.badge ? <em>{item.badge}</em> : null}
             </button>
           ))}
@@ -452,7 +462,7 @@ export default function Home() {
 
         {!loaded ? (
           <div className="simple-page"><div className="empty-state"><strong>Đang tải dữ liệu...</strong></div></div>
-        ) : view === "dashboard" ? (
+        ) : activeView === "dashboard" ? (
           <Dashboard
             person={person} isManager={isManager} customers={visibleCustomers}
             newLeadsToday={newLeads} overdueTasks={overdueTasks} hotCustomers={hotCustomers}
@@ -462,17 +472,17 @@ export default function Home() {
             onOpenCustomer={(id) => openCustomerById(id)} onAddCustomer={() => { setFormCustomer(null); setFormMode("create"); }}
             onGoStage={(stage) => { setStageFilter(stage); setView("customers"); }}
           />
-        ) : view === "today" ? (
+        ) : activeView === "today" ? (
           <TodayView
             person={person} tasks={actionableTasks} customers={visibleCustomers} today={today}
             onOpenCustomer={openCustomerById} onComplete={completeTaskFlow} onAddTask={() => openNewTask("followup")}
           />
-        ) : view === "pipeline" ? (
+        ) : activeView === "pipeline" ? (
           <PipelineBoard
             customers={visibleCustomers} tasksByCustomer={tasksByCustomer} today={today}
             onOpen={setSelected} onChangeStage={changeStage} onRequestLost={(c) => setLost({ open: true, customer: c })}
           />
-        ) : view === "customers" ? (
+        ) : activeView === "customers" ? (
           <CustomersTable
             customers={filteredCustomers} count={filteredCustomers.length} person={person}
             stageFilter={stageFilter} setStageFilter={setStageFilter}
@@ -483,15 +493,15 @@ export default function Home() {
             today={today}
             onOpen={setSelected} onAddCustomer={() => { setFormCustomer(null); setFormMode("create"); }}
           />
-        ) : view === "appointments" ? (
-          <AppointmentsBoard tasks={actionableTasks} onComplete={completeTaskFlow} onAddAppointment={() => openNewTask("appointment")} />
-        ) : view === "projects" ? (
+        ) : activeView === "appointments" ? (
+          <AppointmentsBoard tasks={actionableTasks} onComplete={completeTaskFlow} onAddAppointment={() => openNewTask("appointment")} onOpenCustomer={openCustomerById} />
+        ) : activeView === "projects" ? (
           <ProjectsView projects={projects} customers={customers} person={person} onToast={setToast} onRefresh={refreshAll} presetCustomerId={presetProjectCustomerId} onConsumePreset={() => setPresetProjectCustomerId(null)} />
-        ) : view === "completed" ? (
+        ) : activeView === "completed" ? (
           <CompletedBoard tasks={visibleTasks} />
-        ) : view === "metrics" ? (
+        ) : activeView === "metrics" ? (
           <MetricsView metrics={metrics} customers={visibleCustomers} person={person} onToast={setToast} onRefresh={fetchMetrics} />
-        ) : view === "settings" ? (
+        ) : activeView === "settings" ? (
           <Settings role={role} restrictByOwner={restrictByOwner} onToggleRestrict={chooseRestrict} />
         ) : (
           <SupplierDirectory person={person} createSignal={0} />
@@ -610,7 +620,7 @@ function Dashboard(props: {
   return (
     <div className="simple-page">
       <section className="welcome-row dashboard-welcome">
-        <div><p>BẢN ĐỒ BÁN HÀNG HÔM NAY</p><h1>Dashboard điều hành</h1><span>Ai đang bỏ quên lead, việc nào quá hạn, tiền đang nằm ở đâu.</span></div>
+        <div><p>TỔNG QUAN HÔM NAY</p><h1>Tình hình bán hàng</h1><span>Khách nào chưa gọi, việc nào quá hạn, khách đang ở bước nào.</span></div>
         <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
       </section>
 
@@ -706,6 +716,12 @@ function CustomersTable(props: {
   const COLS = "1.6fr 1fr 1fr 0.9fr 1fr 0.8fr 1.6fr";
   const [segment, setSegment] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const activeFilters = [stageFilter, priorityFilter, ownerFilter, sourceFilter, projectStageFilter].filter((v) => v !== "all").length;
+  const [showFilters, setShowFilters] = useState(activeFilters > 0);
+  function clearFilters() {
+    setStageFilter("all"); setPriorityFilter("all"); setOwnerFilter("all"); setSourceFilter("all"); setProjectStageFilter("all");
+    setSegment("all"); setLimit(PAGE_SIZE);
+  }
 
   const segmented = useMemo(() => customers.filter((c) => passSegment(c, segment, person, today)), [customers, segment, person, today]);
   const shown = segmented.slice(0, limit);
@@ -715,7 +731,7 @@ function CustomersTable(props: {
   return (
     <div className="simple-page">
       <section className="welcome-row customer-hub-welcome">
-        <div><p>TRUNG TÂM KHÁCH HÀNG</p><h1>Toàn cảnh khách hàng & cơ hội</h1><span>Ai đang ở đâu, cần gì, ai phụ trách và bước tiếp theo là gì.</span></div>
+        <div><p>KHÁCH HÀNG</p><h1>Danh sách khách hàng</h1><span>Bấm vào một khách để xem hồ sơ, gọi điện và làm việc tiếp theo.</span></div>
         <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
       </section>
 
@@ -723,12 +739,19 @@ function CustomersTable(props: {
         {SEGMENTS.map((s) => (
           <button key={s.key} className={segment === s.key ? "active" : ""} onClick={() => chooseSegment(s.key)}>{s.label}</button>
         ))}
+        <button className={`filter-toggle${showFilters || activeFilters ? " on" : ""}`} onClick={() => setShowFilters((v) => !v)}>
+          ⚙ Lọc thêm{activeFilters ? ` (${activeFilters})` : ""}
+        </button>
+        {activeFilters || segment !== "all" ? <button className="filter-clear" onClick={clearFilters}>✕ Bỏ lọc</button> : null}
+        <span className="seg-count">{segmented.length} khách</span>
       </div>
 
+      {(showFilters || activeFilters > 0) && (
       <section className="customer-hub-filters">
         <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setLimit(PAGE_SIZE); }}>
-          <option value="all">Tất cả giai đoạn</option>
-          {funnelStageOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <option value="all">Tất cả giai đoạn bán</option>
+          <option value="uncontacted">Chưa liên hệ</option>
+          {[...PIPELINE_STAGES, "paused", "lost"].map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
         </select>
         <select value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả mức độ</option>
@@ -746,8 +769,8 @@ function CustomersTable(props: {
           <option value="all">Tất cả giai đoạn thi công</option>
           {PROJECT_STAGES.map((s) => <option key={s} value={s}>{PROJECT_STAGE_LABEL[s]}</option>)}
         </select>
-        <span>{segmented.length} khách</span>
       </section>
+      )}
 
       <section className="customer-hub-table">
         <div className="crm-table-scroll">

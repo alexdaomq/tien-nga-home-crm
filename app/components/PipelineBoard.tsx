@@ -55,9 +55,9 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
     <div className="simple-page">
       <section className="welcome-row">
         <div>
-          <p>PIPELINE BÁN HÀNG</p>
-          <h1>Kéo thả khách qua từng giai đoạn</h1>
-          <span>{customers.length} cơ hội · {money(totalValue)} tổng giá trị đang chạy</span>
+          <p>TIẾN TRÌNH BÁN HÀNG</p>
+          <h1>Khách đang ở bước nào?</h1>
+          <span>Bấm <b>➜ Bước tiếp</b> trên thẻ khách để chuyển bước (máy tính có thể kéo thả). {customers.length} khách · {money(totalValue)} đang theo đuổi.</span>
         </div>
       </section>
 
@@ -78,7 +78,7 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
                 <strong>{FUNNEL_STAGE_LABEL[stage]}</strong>
                 <span>{list.length}</span>
               </div>
-              <div className="kanban-col-sub">{money(stageValue)}</div>
+              {stageValue ? <div className="kanban-col-sub">{money(stageValue)}</div> : null}
 
               <div className="kanban-col-body">
                 {list.length === 0 ? (
@@ -91,6 +91,8 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
                       (/^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate) && customer.nextContactDate < today);
                     const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(customer.funnelStage);
                     const noNextAction = active && !(customer.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate));
+                    const idx = (PIPELINE_STAGES as readonly string[]).indexOf(stage);
+                    const nextStage = idx >= 0 && idx < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[idx + 1] : null;
                     return (
                       <div
                         key={customer.id}
@@ -109,16 +111,29 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
                           </span>
                         </div>
                         <div className="pipe-card-meta">{customer.ward || customer.address || "—"} · {customer.need || "Chưa rõ nhu cầu"}</div>
-                        <div className="pipe-card-value">{money(customer.value)}</div>
+                        {customer.value ? <div className="pipe-card-value">{money(customer.value)}</div> : null}
                         {noNextAction ? (
                           <div className="pipe-warning">⚠ CHƯA CÓ VIỆC TIẾP THEO</div>
                         ) : (
                           <div className={`pipe-next${overdue ? " overdue" : ""}`}>
-                            <span>Next: {customer.nextAction}</span>
+                            <span>Việc tới: {customer.nextAction}</span>
                             <small>{formatDate(customer.nextContactDate)}{customer.nextActionTime ? ` · ${customer.nextActionTime}` : ""}{overdue ? " · QUÁ HẠN" : ""}</small>
                           </div>
                         )}
-                        <div className="pipe-card-owner">{customer.owner}</div>
+                        <div className="pipe-card-foot">
+                          <span className="pipe-card-owner">{customer.owner}</span>
+                          {nextStage ? (
+                            <button
+                              type="button"
+                              className="pipe-next-btn"
+                              style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[nextStage] }}
+                              onClick={(e) => { e.stopPropagation(); onChangeStage(customer, nextStage); }}
+                              title={`Chuyển sang: ${FUNNEL_STAGE_LABEL[nextStage]}`}
+                            >
+                              ➜ Bước tiếp
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })

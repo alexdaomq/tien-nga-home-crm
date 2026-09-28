@@ -3,7 +3,16 @@
 import { useEffect, useState } from "react";
 import { ACTION_TYPES } from "../../db/enums";
 import { ACTION_TYPE_LABEL } from "../../lib/labels";
-import { todayISO } from "../../lib/format";
+import { addDays, todayISO } from "../../lib/format";
+
+// 6 loại việc hay dùng nhất hiện sẵn; các loại còn lại nằm trong "Việc khác…".
+const COMMON_TYPES = ["goi_khach", "nhan_zalo", "gui_bao_gia", "follow_bao_gia", "moi_showroom", "khao_sat_cong_trinh"];
+const QUICK_DAYS = [
+  { label: "Hôm nay", days: 0 },
+  { label: "Ngày mai", days: 1 },
+  { label: "3 ngày nữa", days: 3 },
+  { label: "1 tuần nữa", days: 7 },
+];
 
 export type NextActionPayload = {
   actionType: string;
@@ -30,14 +39,17 @@ export default function NextActionModal({ open, customerName, heading, initial, 
   const [date, setDate] = useState<string>(initial?.nextContactDate || todayISO());
   const [time, setTime] = useState<string>(initial?.nextActionTime || "09:00");
   const [touchedDetail, setTouchedDetail] = useState(false);
+  const [showAllTypes, setShowAllTypes] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setActionType(initial?.actionType || "goi_khach");
-    setDetail(initial?.nextAction || ACTION_TYPE_LABEL[initial?.actionType || "goi_khach"]);
+    const type = initial?.actionType || "goi_khach";
+    setActionType(type);
+    setDetail(initial?.nextAction || ACTION_TYPE_LABEL[type]);
     setDate(initial?.nextContactDate || todayISO());
     setTime(initial?.nextActionTime || "09:00");
     setTouchedDetail(false);
+    setShowAllTypes(!COMMON_TYPES.includes(type));
   }, [open, initial]);
 
   if (!open) return null;
@@ -65,9 +77,9 @@ export default function NextActionModal({ open, customerName, heading, initial, 
           <button className="close-button" onClick={onClose}>×</button>
         </div>
 
-        <label className="na-label">Chọn loại việc</label>
+        <label className="na-label">1. Làm gì?</label>
         <div className="na-grid">
-          {ACTION_TYPES.map((type) => (
+          {(showAllTypes ? ACTION_TYPES : COMMON_TYPES).map((type) => (
             <button
               key={type}
               type="button"
@@ -77,17 +89,29 @@ export default function NextActionModal({ open, customerName, heading, initial, 
               {ACTION_TYPE_LABEL[type]}
             </button>
           ))}
+          {!showAllTypes ? (
+            <button type="button" className="na-more" onClick={() => setShowAllTypes(true)}>Việc khác…</button>
+          ) : null}
         </div>
 
-        <label className="na-label">Chi tiết việc cần làm</label>
+        <label className="na-label">Ghi rõ (không bắt buộc)</label>
         <input
           value={detail}
           onChange={(event) => { setDetail(event.target.value); setTouchedDetail(true); }}
           placeholder="VD: Gửi 3 mẫu gạch tone kem qua Zalo"
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-          <label className="na-label" style={{ margin: 0 }}>Ngày
+        <label className="na-label">2. Khi nào?</label>
+        <div className="na-quick-days">
+          {QUICK_DAYS.map((q) => {
+            const value = addDays(todayISO(), q.days);
+            return (
+              <button key={q.label} type="button" className={date === value ? "active" : ""} onClick={() => setDate(value)}>{q.label}</button>
+            );
+          })}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+          <label className="na-label" style={{ margin: 0 }}>Hoặc chọn ngày
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <label className="na-label" style={{ margin: 0 }}>Giờ
@@ -97,7 +121,7 @@ export default function NextActionModal({ open, customerName, heading, initial, 
 
         <div className="modal-actions">
           {onSkip ? (
-            <button type="button" className="outline-button" onClick={onSkip}>Khách đã đóng — bỏ qua</button>
+            <button type="button" className="outline-button" onClick={onSkip}>Không cần việc tiếp — bỏ qua</button>
           ) : (
             <button type="button" className="outline-button" onClick={onClose}>Huỷ</button>
           )}

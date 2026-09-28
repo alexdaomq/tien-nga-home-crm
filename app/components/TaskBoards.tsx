@@ -81,28 +81,41 @@ export function TodayBoard({ tasks, onComplete, onAddTask }: { tasks: Task[]; on
   );
 }
 
-export function AppointmentsBoard({ tasks, onComplete, onAddAppointment }: { tasks: Task[]; onComplete: (task: Task) => void; onAddAppointment: () => void }) {
-  const appointments = tasks.filter((task) => task.type === "appointment").sort((a, b) => (a.dueDate + a.dueTime).localeCompare(b.dueDate + b.dueTime));
+export function AppointmentsBoard({ tasks, onComplete, onAddAppointment, onOpenCustomer }: { tasks: Task[]; onComplete: (task: Task) => void; onAddAppointment: () => void; onOpenCustomer: (id: number) => void }) {
+  const today = todayISO();
+  // Chỉ lịch chưa xong: quá hạn + hôm nay + sắp tới (lịch đã xong xem ở "Việc đã làm").
+  const appointments = tasks
+    .filter((task) => task.type === "appointment" && task.status === "open")
+    .sort((a, b) => (a.dueDate + a.dueTime).localeCompare(b.dueDate + b.dueTime));
   return (
     <div className="simple-page">
       <section className="welcome-row">
-        <div><p>LỊCH CHĂM SÓC</p><h1>Lịch hẹn khách hàng</h1><span>Tập trung tất cả cuộc hẹn khảo sát / showroom tại một nơi.</span></div>
+        <div><p>LỊCH HẸN</p><h1>Lịch hẹn khách hàng</h1><span>Các buổi hẹn showroom / khảo sát chưa diễn ra. Bấm vào khách để xem hồ sơ.</span></div>
         <button className="outline-button" onClick={onAddAppointment}>＋ Tạo lịch hẹn</button>
       </section>
       <div className="appointment-list">
         {appointments.length === 0 ? (
-          <div className="empty-state"><strong>Chưa có lịch hẹn</strong><small>Tạo lịch hẹn ngay khi khách đồng ý đến showroom.</small></div>
-        ) : appointments.map((task) => (
-          <div key={task.id} style={{ display: "grid", gridTemplateColumns: "90px 1fr auto", gap: 14, alignItems: "center", padding: 14, borderBottom: "1px solid #e6ece9" }}>
-            <div className="crm-appointment-date"><strong>{shortDate(task.dueDate)}</strong><span>{formatTime(task.dueTime)}</span></div>
-            <div className="appointment-info"><strong>{taskLabel(task)}</strong><div style={{ fontSize: 12, color: "#647572" }}>{task.title} · phụ trách {task.assignedTo}</div></div>
-            <div className="appointment-owner">
-              {task.status === "done" ? <span className="status-pill" style={{ ["--status" as string]: "#08751d" }}>Đã hoàn thành</span> : (
-                <button className="complete-appointment" onClick={() => onComplete(task)}>Đánh dấu hoàn thành</button>
-              )}
+          <div className="empty-state"><strong>Chưa có lịch hẹn nào sắp tới</strong><small>Tạo lịch hẹn ngay khi khách đồng ý đến showroom.</small></div>
+        ) : appointments.map((task) => {
+          const when = task.dueDate < today ? "overdue" : task.dueDate === today ? "today" : "";
+          return (
+            <div key={task.id} className={`appt-row ${when}`}>
+              <div className="crm-appointment-date">
+                <strong>{shortDate(task.dueDate)}</strong>
+                <span>{formatTime(task.dueTime)}</span>
+                {when ? <em>{when === "today" ? "Hôm nay" : "Quá hạn"}</em> : null}
+              </div>
+              <button type="button" className="appt-info" onClick={() => task.customerId != null && onOpenCustomer(task.customerId)} disabled={task.customerId == null}>
+                <strong>{taskLabel(task)}</strong>
+                <small>{task.title} · {task.assignedTo}</small>
+              </button>
+              <div className="appt-actions">
+                {task.customerPhone ? <a className="qa-btn call" href={`tel:${task.customerPhone.replace(/\s/g, "")}`}>📞 Gọi</a> : null}
+                <button className="complete-appointment" onClick={() => onComplete(task)}>✓ Xong</button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

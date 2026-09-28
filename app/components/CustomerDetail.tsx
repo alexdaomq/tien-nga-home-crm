@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import type { Activity, Customer, Project, Task } from "../../lib/types";
 import { money, formatDate, todayISO } from "../../lib/format";
 import { computeCustomerFlags } from "../../lib/flags";
-import { PIPELINE_STAGES } from "../../db/enums";
+import { PIPELINE_STAGES, STAGE_ALIAS } from "../../db/enums";
 import {
   FUNNEL_STAGE_LABEL,
   FUNNEL_STAGE_COLOR,
@@ -98,6 +98,10 @@ export default function CustomerDetail(props: Props) {
   const isPaused = customer.funnelStage === "paused";
   const isSold = SOLD_STAGES.has(customer.funnelStage);
   const consIndex = CONSTRUCTION_TIMELINE.findIndex((m) => m.stages.includes(customer.projectStage));
+  // Bước bán hiện tại + bước kế tiếp (một chạm để chuyển — dùng được trên điện thoại).
+  const stageKey = STAGE_ALIAS[customer.funnelStage] ?? customer.funnelStage;
+  const stageIdx = (PIPELINE_STAGES as readonly string[]).indexOf(stageKey);
+  const nextStage = !isLost && !isPaused && stageIdx >= 0 && stageIdx < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[stageIdx + 1] : null;
 
   // Bảng cơ hội bán hàng — dựng từ các nhóm hàng khách quan tâm (Bước 1: suy ra từ dữ liệu
   // hiện có; Bước 2 sẽ tách thành bảng cơ hội riêng chỉnh tay được từng dòng).
@@ -153,9 +157,8 @@ export default function CustomerDetail(props: Props) {
       <div className="cdx-page">
         {/* Breadcrumb */}
         <div className="cdx-crumb">
-          <button className="cdx-back" onClick={onClose}>← Khách hàng</button>
-          <span className="cdx-crumb-sep">/</span>
-          <span className="cdx-crumb-cur">Chi tiết khách hàng</span>
+          <button className="cdx-back" onClick={onClose}>← Quay lại</button>
+          <span className="cdx-crumb-cur">Hồ sơ khách: <strong>{customer.fullName}</strong></span>
         </div>
 
         {/* Header */}
@@ -202,7 +205,7 @@ export default function CustomerDetail(props: Props) {
           {/* Cột trái */}
           <div className="cdx-left">
             {/* Hồ sơ nhu cầu */}
-            <section className="cdx-card">
+            <section className="cdx-card" style={{ ["--mo" as string]: 4 }}>
               <div className="cdx-card-title">📋 HỒ SƠ NHU CẦU</div>
               <dl className="cdx-facts">
                 <div><dt>Địa chỉ</dt><dd>{[customer.address, customer.ward && !customer.address.includes(customer.ward) ? customer.ward : ""].filter(Boolean).join(" · ") || "Chưa rõ"}</dd></div>
@@ -216,7 +219,7 @@ export default function CustomerDetail(props: Props) {
             </section>
 
             {/* Tiến độ công trình */}
-            <section className="cdx-card">
+            <section className="cdx-card" style={{ ["--mo" as string]: 7 }}>
               <div className="cdx-card-title">📊 TIẾN ĐỘ CÔNG TRÌNH</div>
               {customer.projectStage ? null : <div className="cdx-hint">Chưa ghi nhận giai đoạn thi công — cập nhật ở “Sửa hồ sơ”.</div>}
               <div className="cdx-track">
@@ -235,7 +238,7 @@ export default function CustomerDetail(props: Props) {
             </section>
 
             {/* Cơ hội bán hàng */}
-            <section className="cdx-card">
+            <section className="cdx-card" style={{ ["--mo" as string]: 8 }}>
               <div className="cdx-card-title">🏷 CƠ HỘI BÁN HÀNG</div>
               <table className="cdx-opp">
                 <thead>
@@ -255,12 +258,8 @@ export default function CustomerDetail(props: Props) {
             </section>
 
             {/* Lịch sử chăm sóc */}
-            <section className="cdx-card">
+            <section className="cdx-card" style={{ ["--mo" as string]: 5 }}>
               <div className="cdx-card-title">🕒 LỊCH SỬ CHĂM SÓC</div>
-              <form onSubmit={submitNote} className="cdx-note-row">
-                <input placeholder="Ghi lại cuộc gọi / tin nhắn vừa thực hiện..." value={note} onChange={(e) => setNote(e.target.value)} />
-                <button type="submit" className="save-button">Lưu</button>
-              </form>
               <div className="timeline">
                 {activities.length === 0 ? (
                   <span style={{ color: "var(--muted)", fontSize: 12 }}>Chưa có tương tác nào được ghi nhận.</span>
@@ -279,26 +278,15 @@ export default function CustomerDetail(props: Props) {
             </section>
 
             {/* Thông tin bổ sung */}
-            <section className="cdx-card">
+            <section className="cdx-card" style={{ ["--mo" as string]: 10 }}>
               <button className="cdx-more-toggle" onClick={() => setShowMore((v) => !v)}>
                 <span>📄 Thông tin bổ sung</span>
                 <span>{showMore ? "▲" : "▼"}</span>
               </button>
               {showMore && (
                 <div className="cdx-more">
-                  <div className="cdx-sub-title">Đổi giai đoạn bán</div>
-                  <div className="stage-changer">
-                    {PIPELINE_STAGES.map((stage) => (
-                      <button key={stage} className={customer.funnelStage === stage ? "active" : ""} style={{ ["--stage" as string]: FUNNEL_STAGE_COLOR[stage] }} onClick={() => onChangeStage(customer, stage)}>
-                        {FUNNEL_STAGE_LABEL[stage]}
-                      </button>
-                    ))}
-                    <button className="off" onClick={() => onChangeStage(customer, "paused")}>Tạm hoãn</button>
-                    <button className="off danger" onClick={() => onRequestLost(customer)}>Không chốt</button>
-                  </div>
-
                   {isLost && (
-                    <div className="warn-banner detail" style={{ marginTop: 12 }}>
+                    <div className="warn-banner detail" style={{ marginTop: 0 }}>
                       <div>Lý do không chốt: <strong>{LOSS_REASON_LABEL[customer.lossReason] ?? customer.lossReason}</strong></div>
                       {customer.lostCompetitor ? <div>Đối thủ: {customer.lostCompetitor}</div> : null}
                       {customer.lostNote ? <div>Ghi chú: {customer.lostNote}</div> : null}
@@ -336,7 +324,7 @@ export default function CustomerDetail(props: Props) {
           {/* Cột phải */}
           <div className="cdx-right">
             {/* Việc cần làm tiếp */}
-            <section className="cdx-card rail">
+            <section className="cdx-card rail" style={{ ["--mo" as string]: 1 }}>
               <div className="cdx-card-title">🗒 VIỆC CẦN LÀM TIẾP</div>
               {hasNext ? (
                 <div className={`cdx-next${nextOverdue ? " overdue" : ""}`}>
@@ -358,8 +346,36 @@ export default function CustomerDetail(props: Props) {
               )}
             </section>
 
+            {/* Bước bán hiện tại — chuyển bước bằng 1 chạm */}
+            <section className="cdx-card rail" style={{ ["--mo" as string]: 2 }}>
+              <div className="cdx-card-title">🧭 KHÁCH ĐANG Ở BƯỚC</div>
+              <div className="cdx-stage-now" style={{ ["--c" as string]: FUNNEL_STAGE_COLOR[customer.funnelStage] ?? "#94a3a0" }}>
+                {FUNNEL_STAGE_LABEL[customer.funnelStage] ?? customer.funnelStage}
+              </div>
+              {nextStage ? (
+                <button className="cdx-stage-next" style={{ ["--c" as string]: FUNNEL_STAGE_COLOR[nextStage] }} onClick={() => onChangeStage(customer, nextStage)}>
+                  Chuyển sang: {FUNNEL_STAGE_LABEL[nextStage]} ➜
+                </button>
+              ) : null}
+              <select
+                className="cdx-stage-pick"
+                value=""
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  if (v === "lost") onRequestLost(customer);
+                  else onChangeStage(customer, v);
+                }}
+              >
+                <option value="">Chọn bước khác…</option>
+                {PIPELINE_STAGES.filter((s) => s !== stageKey).map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
+                {customer.funnelStage !== "paused" ? <option value="paused">Tạm hoãn</option> : null}
+                {!isLost ? <option value="lost">Không chốt</option> : null}
+              </select>
+            </section>
+
             {/* Mức độ quan tâm */}
-            <section className="cdx-card rail">
+            <section className="cdx-card rail" style={{ ["--mo" as string]: 6 }}>
               <div className="cdx-card-title">🌡 Cập nhật mức độ quan tâm</div>
               <div className="cdx-temp-btns">
                 {PRIORITY_STEPS.map((p) => (
@@ -383,17 +399,17 @@ export default function CustomerDetail(props: Props) {
             </section>
 
             {/* Ghi chú nhanh */}
-            <section className="cdx-card rail">
-              <div className="cdx-card-title">✏️ Ghi chú nhanh</div>
+            <section className="cdx-card rail" style={{ ["--mo" as string]: 3 }}>
+              <div className="cdx-card-title">✏️ Ghi chú chăm sóc</div>
               <form onSubmit={submitNote}>
-                <textarea className="cdx-quicknote" placeholder="Nhập ghi chú..." value={note} onChange={(e) => setNote(e.target.value)} />
+                <textarea className="cdx-quicknote" placeholder="Vừa gọi / nhắn gì với khách? Ghi lại ở đây..." value={note} onChange={(e) => setNote(e.target.value)} />
                 <button type="submit" className="save-button" style={{ width: "100%", marginTop: 8 }}>💾 Lưu ghi chú</button>
               </form>
             </section>
 
             {/* Gợi ý bán chéo */}
             {suggestGroup && !isLost && (
-              <section className="cdx-card rail suggest">
+              <section className="cdx-card rail suggest" style={{ ["--mo" as string]: 9 }}>
                 <div className="cdx-suggest-head">💡 Khách hàng có thể quan tâm thêm</div>
                 <div className="cdx-suggest-name">{suggestGroup.label}</div>
                 <div className="cdx-suggest-sub">
