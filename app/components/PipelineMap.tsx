@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Customer } from "../../lib/types";
 import { PIPELINE_STAGES, STAGE_ALIAS } from "../../db/enums";
 import { FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR } from "../../lib/labels";
-import { money, todayISO } from "../../lib/format";
+import { formatDate, money, todayISO } from "../../lib/format";
 
 type Props = {
   customers: Customer[];
@@ -13,6 +13,13 @@ type Props = {
 
 const MAX_PER_STAGE = 24;
 const ROW_GAP = 16; // khoảng cách giữa các hàng chấm xếp lên trên
+const TIP_SPACE = 172; // khoảng trống trên cùng dành cho tooltip (đủ cả dòng cảnh báo + nút "Mở hồ sơ")
+const TIP_HALF_WIDTH = 125; // nửa bề rộng tooltip — giữ tooltip không tràn mép trái/phải
+
+// Thiết bị không rê chuột được (điện thoại): chạm lần 1 xem, bấm "Mở hồ sơ" để vào.
+function canHover(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+}
 
 // Các mốc trên timeline: "Chưa liên hệ" (data thô) đầu phễu, 9 giai đoạn pipeline,
 // "Không chốt" (mất khách) cuối phễu.
@@ -59,7 +66,15 @@ type Dot = { c: Customer; xPct: number; y: number; dx: number; size: number; col
 
 export default function PipelineMap({ customers, onOpen }: Props) {
   const [onlyWarn, setOnlyWarn] = useState(false);
-  const [hover, setHover] = useState<{ dot: Dot; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ dot: Dot; x: number; y: number; pinned: boolean } | null>(null);
+
+  function tipFor(d: Dot, el: HTMLElement, pinned: boolean) {
+    const wrap = (el.parentElement as HTMLElement).getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const rawX = r.left - wrap.left + r.width / 2;
+    const x = Math.min(Math.max(rawX, TIP_HALF_WIDTH + 4), wrap.width - TIP_HALF_WIDTH - 4);
+    setHover({ dot: d, x, y: r.top - wrap.top, pinned });
+  }
   const today = todayISO();
   const nowMs = Date.now();
 
@@ -83,7 +98,8 @@ export default function PipelineMap({ customers, onOpen }: Props) {
       const shown = Math.min((byKey.get(n.key) ?? []).length, MAX_PER_STAGE);
       maxRows = Math.max(maxRows, Math.ceil(shown / 2));
     }
-    const centerY = 40 + maxRows * ROW_GAP;
+    // Chừa TIP_SPACE phía trên chấm cao nhất để tooltip (tên, SĐT, sale, việc tới) không bị cắt.
+    const centerY = TIP_SPACE + maxRows * ROW_GAP;
     const wrapH = centerY + 78;
     const dots: Dot[] = [];
     const nodeInfo = NODES.map((node, i) => {
@@ -117,7 +133,12 @@ export default function PipelineMap({ customers, onOpen }: Props) {
       </div>
 
       <div className="pmap-scroll">
-        <div className="pmap-wrap" style={{ height: wrapH }} onMouseLeave={() => setHover(null)}>
+        <div
+          className="pmap-wrap"
+          style={{ height: wrapH }}
+          onMouseLeave={() => setHover((h) => (h?.pinned ? h : null))}
+          onClick={(e) => { if (e.target === e.currentTarget) setHover(null); }}
+        >
           <div className="pmap-line" style={{ background: LINE_GRADIENT, top: centerY }} />
 
           {nodeInfo.map((s) => (
@@ -133,31 +154,38 @@ export default function PipelineMap({ customers, onOpen }: Props) {
               key={d.c.id}
               className={`pmap-dot${d.warn ? " warn" : ""}`}
               style={{ left: `${d.xPct}%`, top: d.y, width: d.size, height: d.size, marginLeft: d.dx - d.size / 2, background: d.color }}
-              onClick={() => onOpen(d.c)}
-              onMouseEnter={(e) => {
-                const wrap = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-                const r = e.currentTarget.getBoundingClientRect();
-                setHover({ dot: d, x: r.left - wrap.left + r.width / 2, y: r.top - wrap.top });
+              onClick={(e) => {
+                if (canHover()) { setHover(null); onOpen(d.c); return; }
+                // Điện thoại: chạm lần 1 hiện thông tin; chạm lại đúng chấm đó thì mở hồ sơ.
+                if (hover?.pinned && hover.dot.c.id === d.c.id) { setHover(null); onOpen(d.c); }
+                else tipFor(d, e.currentTarget, true);
               }}
+              onMouseEnter={(e) => { if (canHover()) tipFor(d, e.currentTarget, false); }}
               aria-label={d.c.fullName}
             />
           ))}
 
           {hover && (
-            <div className="pmap-tip" style={{ left: hover.x, top: hover.y - 6 }}>
+            <div className={`pmap-tip${hover.pinned ? " pinned" : ""}`} style={{ left: hover.x, top: hover.y - 8 }}>
               <div className="pmap-tip-name">{hover.dot.c.fullName}</div>
               <div className="pmap-tip-sub">
-                {hover.dot.label}
-                {hover.dot.c.value ? ` · ${money(hover.dot.c.value)}` : ""}
-                {hover.dot.warn ? " · " : ""}
-                {hover.dot.warn ? <span className="pmap-tip-warn">cần chú ý</span> : null}
+                <span className="pmap-tip-stage" style={{ ["--c" as string]: hover.dot.color }}>{hover.dot.label}</span>
+                {hover.dot.c.value ? <b> · {money(hover.dot.c.value)}</b> : null}
               </div>
+              <div className="pmap-tip-sub">📞 {hover.dot.c.phone} · 👤 {hover.dot.c.owner}</div>
+              {hover.dot.c.nextAction.trim() ? (
+                <div className="pmap-tip-sub">▶ {hover.dot.c.nextAction}{hover.dot.c.nextContactDate ? ` · ${formatDate(hover.dot.c.nextContactDate)}` : ""}</div>
+              ) : null}
+              {hover.dot.warn ? <div className="pmap-tip-warn">⚠ Cần chú ý</div> : null}
+              {hover.pinned ? (
+                <button type="button" className="pmap-tip-open" onClick={() => { const c = hover.dot.c; setHover(null); onOpen(c); }}>Mở hồ sơ ›</button>
+              ) : null}
             </div>
           )}
         </div>
       </div>
 
-      <div className="pmap-foot">{total} khách trong pipeline · rê chuột xem tên, bấm để mở hồ sơ</div>
+      <div className="pmap-foot">{total} khách · rê chuột (điện thoại: chạm) vào chấm để xem thông tin khách</div>
     </div>
   );
 }
