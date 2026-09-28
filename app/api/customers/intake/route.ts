@@ -4,22 +4,23 @@ import { activities, customers } from "../../../../db/schema";
 
 // ============================================================================
 // POST /api/customers/intake — thêm khách từ MỘT ĐOẠN TEXT tự do (luồng tự động
-// bên ngoài: n8n, Zalo bot, form...). Tự trích xuất Tên / SĐT / Địa chỉ / Nhu cầu,
+// bên ngoài: n8n, Zalo bot, form...). Tự trích Tên / SĐT / Địa chỉ / Nhu cầu,
 // chuẩn hoá SĐT về 10 số bắt đầu bằng 0, và tự gán sale theo "phụ trách khu".
 //
-// Bảo mật:   header x-webhook-secret phải khớp app_settings.webhookSecret
-//            (lấy/tạo tại tab Chỉ số vận hành → Tích hợp AI tự động).
-// Chống spam: giới hạn số khách tạo qua API này trong 60 giây gần nhất.
-// Trùng SĐT: KHÔNG cập nhật — chỉ trả về mã EXISTS.
+// Cũng nhận field có sẵn (nếu luồng ngoài đã trích giúp): { fullName, phone,
+// address, need, ward } — field truyền vào được ưu tiên hơn phần đọc từ text.
 //
-// Body JSON: { "text": "..." }  (cũng nhận "message"/"content"; hoặc gửi thẳng
-//            text/plain làm body). Tuỳ chọn: { "source": "Zalo" }.
+// Bảo mật:   header x-webhook-secret khớp app_settings.webhookSecret.
+// Chống spam: tối đa MAX_INTAKE_PER_MINUTE khách/60s qua API này.
+// Trùng SĐT: KHÔNG cập nhật — trả về code EXISTS.
+//
+// Body JSON: { "text": "..." }  và/hoặc { fullName?, phone?, address?, need?, ward? }.
 // Trả về:    { code, message, customerId?, owner?, extracted? }
 //   code ∈ CREATED | EXISTS | INVALID | UNAUTHORIZED | RATE_LIMITED | ERROR
 // ============================================================================
 
 const SOURCE_TAG = "API tự động";
-const MAX_INTAKE_PER_MINUTE = 20; // quá số này trong 60s -> chặn (chống spam)
+const MAX_INTAKE_PER_MINUTE = 20;
 
 // >>> PHỤ TRÁCH KHU — CHỈNH DANH SÁCH NÀY theo phân vùng thật của shop <<<
 // Khớp không dấu trên địa chỉ; không khớp -> "Chưa phân công" (sale tự nhận).
@@ -31,11 +32,14 @@ const ZONE_OWNERS: { match: string; ward: string; owner: string }[] = [
   { match: "phuc yen", ward: "Phúc Yên", owner: "Hương" },
 ];
 
+// Từ đứng ngay trước 1 số điện thoại cho thấy đó là số NHÂN VIÊN/kênh, không phải khách.
+const STAFF_PHONE_CONTEXT = /(zalo|tu van vien|nhan vien|ban ay|lien he|hotline|tong dai|cua shop|cua em)/;
+
 function noAccent(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
 }
 
-// Quy SĐT về 10 số bắt đầu bằng 0 (bỏ +84/84/0084, khoảng trắng, dấu chấm/gạch).
+// Quy SĐT về 10 số bắt đầu bằng 0.
 function normalizePhone(raw: string): string {
   let d = raw.replace(/\D/g, "");
   if (d.startsWith("0084")) d = "0" + d.slice(4);
@@ -45,7 +49,11 @@ function normalizePhone(raw: string): string {
 }
 const isValidPhone = (p: string) => /^0\d{9}$/.test(p);
 
-// Lấy giá trị theo nhãn "Nhãn: giá trị" (chấp nhận có dấu / không dấu, ':' hoặc '-').
+// Bỏ tiền tố xưng hô đầu tên: "anh Biên" -> "Biên".
+function stripTitle(name: string): string {
+  return name.replace(/^\s*(?:anh|chị|chi|cô|co|chú|chu|em|bác|bac|ông|ong|bà|ba)\s+/iu, "").trim();
+}
+
 function pickField(text: string, labels: string[]): string {
   const alt = labels.join("|");
   const re = new RegExp(`(?:^|\\n)\\s*(?:${alt})\\s*[:\\-]\\s*(.+?)\\s*(?:\\n|$)`, "i");
@@ -53,89 +61,106 @@ function pickField(text: string, labels: string[]): string {
   return m ? m[1].trim() : "";
 }
 
-// Tìm SĐT trong 1 chuỗi (chấp nhận có khoảng trắng/dấu chấm/gạch giữa các số).
-function findPhone(text: string): string {
-  const candidates = text.match(/(?:\+?84|0)[\d.\-\s]{7,14}\d/g) ?? [];
-  for (const c of candidates) {
-    const p = normalizePhone(c);
-    if (isValidPhone(p)) return p;
-  }
-  // Thử thêm dãy số thuần (thiếu số 0 đầu).
-  for (const c of text.match(/\d[\d.\-\s]{7,14}\d/g) ?? []) {
-    const p = normalizePhone(c);
-    if (isValidPhone(p)) return p;
+// Tìm SĐT KHÁCH: bỏ qua số đứng sau ngữ cảnh nhân viên (Zalo tư vấn viên...).
+function findCustomerPhone(text: string): string {
+  for (const re of [/(?:\+?84|0)[\d.\-\s]{7,14}\d/g, /\d[\d.\-\s]{7,14}\d/g]) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      const p = normalizePhone(m[0]);
+      if (!isValidPhone(p)) continue;
+      const before = noAccent(text.slice(Math.max(0, m.index - 28), m.index));
+      if (STAFF_PHONE_CONTEXT.test(before)) continue; // số của nhân viên/kênh -> bỏ
+      return p;
+    }
   }
   return "";
 }
 
-function extract(text: string) {
+function assignZone(address: string, ward: string, text: string): { ward: string; owner: string } {
+  const hay = noAccent(`${address} ${ward} ${text}`);
+  const zone = ZONE_OWNERS.find((z) => hay.includes(z.match));
+  return { ward: ward || zone?.ward || "", owner: zone?.owner ?? "Chưa phân công" };
+}
+
+function extractFromText(text: string) {
   const nameLabels = ["họ và tên", "ho va ten", "họ tên", "ho ten", "tên khách hàng", "ten khach hang", "khách hàng", "khach hang", "tên", "ten", "khách", "khach"];
   const phoneLabels = ["số điện thoại", "so dien thoai", "điện thoại", "dien thoai", "sđt", "sdt", "phone", "tel", "đt", "dt"];
   const addrLabels = ["địa chỉ", "dia chi", "address", "đc", "dc"];
-  const needLabels = ["nhu cầu", "nhu cau", "cần mua", "can mua", "yêu cầu", "yeu cau", "sản phẩm", "san pham", "cần", "can"];
+  const needLabels = ["nhu cầu", "nhu cau", "cần mua", "can mua", "yêu cầu", "yeu cau", "sản phẩm", "san pham"];
 
-  // SĐT: ưu tiên dòng có nhãn, không có thì quét cả text.
+  // SĐT: ưu tiên dòng có nhãn; không có thì quét cả text (bỏ số nhân viên).
   const phoneLabeled = pickField(text, phoneLabels);
-  const phone = findPhone(phoneLabeled) || findPhone(text);
+  const phone = findCustomerPhone(phoneLabeled) || findCustomerPhone(text);
 
-  // Tên: theo nhãn; nếu không có thì thử mẫu "Chị/Anh/... Tên"; rồi tới dòng đầu; rồi phần đầu câu.
+  // Tên: nhãn -> mẫu "anh/chị + Tên" (bỏ từ xưng hô, tránh stopword) -> dòng đầu.
   let fullName = pickField(text, nameLabels);
   if (!fullName) {
-    const titled = text.match(/(?:chị|anh|cô|chú|em|bác|ông|bà)\s+\p{L}+/iu);
-    if (titled) fullName = titled[0].trim();
+    const STOP = new Set(["da", "de", "oi", "a", "ay", "nhe", "o", "cac", "va", "dang", "se", "can", "muon", "co", "la", "ban", "cua", "cho", "xin", "cam", "on", "roi", "nhé", "minh", "giup"]);
+    const re = /(?<![\p{L}])(?:chị|chi|anh|cô|co|chú|chu|em|bác|bac|ông|ong|bà|ba)\s+(\p{L}+)/giu;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (!STOP.has(noAccent(m[1]))) { fullName = m[1].trim(); break; }
+    }
   }
   if (!fullName) {
-    fullName = text.split("\n").map((l) => l.trim()).find((l) => l && !findPhone(l) && /\p{L}/u.test(l)) ?? "";
+    fullName = text.split("\n").map((l) => l.trim()).find((l) => l && !findCustomerPhone(l) && /\p{L}/u.test(l)) ?? "";
   }
-  if (!fullName) {
-    const head = text.split(/\bở\b|\btại\b|sđt|sdt|đt(?![\p{L}])|,|\n/iu)[0].trim();
-    if (head && !findPhone(head)) fullName = head;
+  fullName = stripTitle(fullName).replace(/[\d.\-\s]{6,}.*$/, "").trim().slice(0, 60);
+
+  // Địa chỉ: nhãn -> mẫu "khu/ở/tại + <Chuỗi viết hoa>".
+  let address = pickField(text, addrLabels);
+  if (!address) {
+    const khu = text.match(/(?<![\p{L}])(?:khu\s*vực|khu|ở|tại)\s+(\p{Lu}\p{L}*(?:\s+\p{Lu}\p{L}*){0,4})/u);
+    if (khu) address = khu[1].trim();
   }
-  // Cắt phần dính SĐT/nhiễu ở cuối tên, giới hạn độ dài.
-  fullName = fullName.replace(/[\d.\-\s]{6,}.*$/, "").trim().slice(0, 60);
 
-  const address = pickField(text, addrLabels);
-  const need = pickField(text, needLabels);
+  // Nhu cầu: nhãn -> các dòng gạch đầu dòng (–, -, •, *).
+  let need = pickField(text, needLabels);
+  if (!need) {
+    const bullets = (text.match(/^\s*[–\-•*·]\s*(.+)$/gmu) ?? []).map((l) => l.replace(/^\s*[–\-•*·]\s*/u, "").trim()).filter(Boolean);
+    if (bullets.length) need = bullets.join("; ");
+  }
 
-  // Phụ trách khu: khớp địa chỉ (rồi tới cả text) với ZONE_OWNERS.
-  const hay = noAccent(`${address} ${text}`);
-  const zone = ZONE_OWNERS.find((z) => hay.includes(z.match));
-
-  return {
-    fullName,
-    phone,
-    address,
-    need,
-    ward: zone?.ward ?? "",
-    owner: zone?.owner ?? "Chưa phân công",
-  };
+  const zone = assignZone(address, "", text);
+  return { fullName, phone, address, need, ward: zone.ward, owner: zone.owner };
 }
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Có lỗi khi xử lý.";
 }
 
-async function readText(request: Request): Promise<string> {
+async function readInput(request: Request): Promise<{ text: string; explicit: Record<string, string> }> {
   const ct = request.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) {
     const body = (await request.json()) as Record<string, unknown>;
-    return String(body.text ?? body.message ?? body.content ?? "").trim();
+    const text = String(body.text ?? body.message ?? body.content ?? "").trim();
+    const need = Array.isArray(body.need) ? body.need.map(String).join("; ") : String(body.need ?? "").trim();
+    return {
+      text,
+      explicit: {
+        fullName: String(body.fullName ?? body.name ?? "").trim(),
+        phone: String(body.phone ?? "").trim(),
+        address: String(body.address ?? "").trim(),
+        need,
+        ward: String(body.ward ?? "").trim(),
+      },
+    };
   }
-  return (await request.text()).trim();
+  return { text: (await request.text()).trim(), explicit: { fullName: "", phone: "", address: "", need: "", ward: "" } };
 }
 
 export async function POST(request: Request) {
   try {
     const db = getDb();
 
-    // 1) Bảo mật — khoá bí mật.
+    // 1) Bảo mật.
     const providedSecret = request.headers.get("x-webhook-secret") ?? "";
     const settings = await getOrCreateSettings(db);
     if (!providedSecret || providedSecret !== settings.webhookSecret) {
       return Response.json({ code: "UNAUTHORIZED", message: "Khoá bí mật không đúng hoặc thiếu header x-webhook-secret." }, { status: 401 });
     }
 
-    // 2) Chống spam — giới hạn số khách tạo qua API này trong 60 giây.
+    // 2) Chống spam.
     const recent = await db
       .select({ id: customers.id })
       .from(customers)
@@ -144,28 +169,36 @@ export async function POST(request: Request) {
       return Response.json({ code: "RATE_LIMITED", message: "Quá nhiều yêu cầu trong thời gian ngắn, thử lại sau ít phút." }, { status: 429 });
     }
 
-    // 3) Đọc + trích xuất.
-    const text = await readText(request);
-    if (text.length < 3) {
-      return Response.json({ code: "INVALID", message: "Thiếu nội dung text." }, { status: 400 });
+    // 3) Đọc + trích xuất (field truyền vào được ưu tiên hơn phần đọc từ text).
+    const { text, explicit } = await readInput(request);
+    const parsed = text && text.length >= 3 ? extractFromText(text) : { fullName: "", phone: "", address: "", need: "", ward: "", owner: "Chưa phân công" };
+
+    const address = explicit.address || parsed.address;
+    const zone = assignZone(address, explicit.ward || parsed.ward, text);
+    const info = {
+      fullName: (explicit.fullName ? stripTitle(explicit.fullName) : parsed.fullName).slice(0, 60),
+      phone: normalizePhone(explicit.phone) || parsed.phone,
+      address,
+      need: explicit.need || parsed.need,
+      ward: zone.ward,
+      owner: zone.owner,
+    };
+
+    if (!text && !explicit.fullName && !explicit.phone) {
+      return Response.json({ code: "INVALID", message: "Thiếu nội dung (text hoặc field khách hàng)." }, { status: 400 });
     }
-    const info = extract(text);
     if (info.fullName.length < 2) {
-      return Response.json({ code: "INVALID", message: "Không đọc được tên khách. Gợi ý gửi kèm nhãn 'Tên: ...'." }, { status: 400 });
+      return Response.json({ code: "INVALID", message: "Không đọc được tên khách.", extracted: info }, { status: 400 });
     }
     if (!isValidPhone(info.phone)) {
-      return Response.json({ code: "INVALID", message: "Không đọc được số điện thoại hợp lệ (10 số bắt đầu bằng 0)." }, { status: 400 });
+      return Response.json({ code: "INVALID", message: "Không đọc được số điện thoại KHÁCH hợp lệ (10 số bắt đầu bằng 0). Lưu ý: số của tư vấn viên/hotline sẽ bị bỏ qua.", extracted: info }, { status: 400 });
     }
 
-    // 4) Trùng SĐT -> KHÔNG cập nhật, chỉ báo đã tồn tại.
+    // 4) Trùng SĐT -> KHÔNG cập nhật.
     const existingRows = await db.select().from(customers).limit(3000);
     const existing = existingRows.find((row) => normalizePhone(row.phone) === info.phone);
     if (existing) {
-      return Response.json({
-        code: "EXISTS",
-        message: `Khách hàng đã tồn tại (SĐT ${info.phone} — ${existing.fullName}). Bỏ qua, không cập nhật.`,
-        customerId: existing.id,
-      });
+      return Response.json({ code: "EXISTS", message: `Khách hàng đã tồn tại (SĐT ${info.phone} — ${existing.fullName}). Bỏ qua, không cập nhật.`, customerId: existing.id });
     }
 
     // 5) Tạo mới.
