@@ -12,6 +12,8 @@ import PipelineMap from "./components/PipelineMap";
 import PipelineFunnel from "./components/PipelineFunnel";
 import CustomerDetail from "./components/CustomerDetail";
 import CustomerForm from "./components/CustomerForm";
+import ImportCustomersModal from "./components/ImportCustomersModal";
+import { normalizePhone } from "../lib/customer-import";
 import NextActionModal, { NextActionPayload } from "./components/NextActionModal";
 import LostReasonModal, { LostPayload } from "./components/LostReasonModal";
 import WonModal, { WonPayload } from "./components/WonModal";
@@ -67,6 +69,7 @@ export default function Home() {
   const [won, setWon] = useState<{ open: boolean; customer: Customer | null }>({ open: false, customer: null });
 
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: "", type: "followup", dueDate: todayISO(), dueTime: "", assignedTo: TEAM_MEMBERS[0], notes: "", customerId: null as number | null });
   const [presetProjectCustomerId, setPresetProjectCustomerId] = useState<number | null>(null);
   const [showNotif, setShowNotif] = useState(false);
@@ -491,6 +494,7 @@ export default function Home() {
             projectStageFilter={projectStageFilter} setProjectStageFilter={setProjectStageFilter}
             today={today}
             onOpen={setSelected} onAddCustomer={() => { setFormCustomer(null); setFormMode("create"); }}
+            onImport={() => setShowImport(true)}
           />
         ) : activeView === "appointments" ? (
           <AppointmentsBoard tasks={actionableTasks} onComplete={completeTaskFlow} onAddAppointment={() => openNewTask("appointment")} onOpenCustomer={openCustomerById} />
@@ -539,6 +543,18 @@ export default function Home() {
       <LostReasonModal open={lost.open} customerName={lost.customer?.fullName} onSubmit={applyLost} onClose={() => setLost({ open: false, customer: null })} />
 
       <WonModal open={won.open} customer={won.customer} onSubmit={applyWon} onClose={() => setWon({ open: false, customer: null })} />
+
+      {showImport && (
+        <ImportCustomersModal
+          person={person}
+          existingPhones={new Set(customers.map((c) => normalizePhone(c.phone)))}
+          onClose={() => setShowImport(false)}
+          onDone={async (created) => {
+            setShowImport(false);
+            if (created) { setToast(`Đã nhập ${created} khách từ file`); await refreshCore(); }
+          }}
+        />
+      )}
 
       {showTaskForm && (
         <div className="modal-overlay">
@@ -704,9 +720,9 @@ function CustomersTable(props: {
   ownerFilter: string; setOwnerFilter: (v: string) => void;
   sourceFilter: string; setSourceFilter: (v: string) => void;
   projectStageFilter: string; setProjectStageFilter: (v: string) => void;
-  onOpen: (c: Customer) => void; onAddCustomer: () => void;
+  onOpen: (c: Customer) => void; onAddCustomer: () => void; onImport: () => void;
 }) {
-  const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, projectStageFilter, setProjectStageFilter, onOpen, onAddCustomer } = props;
+  const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, projectStageFilter, setProjectStageFilter, onOpen, onAddCustomer, onImport } = props;
   const COLS = "1.6fr 1fr 1fr 0.9fr 1fr 0.8fr 1.6fr";
   const [segment, setSegment] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -726,7 +742,10 @@ function CustomersTable(props: {
     <div className="simple-page">
       <section className="welcome-row customer-hub-welcome">
         <div><p>KHÁCH HÀNG</p><h1>Danh sách khách hàng</h1><span>Bấm vào một khách để xem hồ sơ, gọi điện và làm việc tiếp theo.</span></div>
-        <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
+        <div className="hub-actions">
+          <button className="import-btn" onClick={onImport}>📥 Nhập từ Excel</button>
+          <button className="mobile-add" onClick={onAddCustomer}>＋ Thêm khách</button>
+        </div>
       </section>
 
       <div className="seg-chips">
