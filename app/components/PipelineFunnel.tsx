@@ -8,12 +8,10 @@ type Props = {
   onGoStage: (stage: string) => void;
 };
 
-const TIERS = [
-  { key: "uncontacted", label: "Chưa liên hệ", color: "#8b8b8b" },
-  ...PIPELINE_STAGES.map((s) => ({ key: s as string, label: FUNNEL_STAGE_LABEL[s], color: FUNNEL_STAGE_COLOR[s] })),
-];
+// 7 tầng phễu = 7 bước bán hàng; "Không chốt" nằm riêng dưới đáy (khách rời phễu).
+const TIERS = PIPELINE_STAGES.map((s) => ({ key: s as string, label: FUNNEL_STAGE_LABEL[s], color: FUNNEL_STAGE_COLOR[s] }));
 const TOP_WIDTH = 100; // % bề rộng miệng phễu
-const TIP_WIDTH = 26; // % bề rộng đáy phễu
+const TIP_WIDTH = 30; // % bề rộng đáy phễu
 const MAX_DOTS = 16;
 
 // Vị trí chấm cố định theo chỉ số để phễu không "nhảy" mỗi lần render.

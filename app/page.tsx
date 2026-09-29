@@ -30,7 +30,7 @@ import {
   PROJECT_STAGE_LABEL,
   LOSS_REASON_LABEL,
 } from "../lib/labels";
-import { PIPELINE_STAGES, PRIORITIES, PROJECT_STAGES, SOURCES, STAGE_ALIAS } from "../db/enums";
+import { PIPELINE_STAGES, PRIORITIES, PROJECT_STAGES, SOURCES, isActiveStage, isSoldStage, normalizeStage } from "../db/enums";
 
 const priorityOptions = PRIORITIES.map((value) => ({ value, label: `${PRIORITY_EMOJI[value]} ${PRIORITY_LABEL[value]}` }));
 
@@ -160,7 +160,7 @@ export default function Home() {
   // Khách đã mất/tạm hoãn thì bỏ việc của họ ra khỏi danh sách cần làm (tránh nhắc việc chết).
   const closedCustomerIds = useMemo(() => {
     const set = new Set<number>();
-    for (const c of visibleCustomers) if (c.funnelStage === "lost" || c.funnelStage === "paused") set.add(c.id);
+    for (const c of visibleCustomers) if (c.funnelStage === "lost") set.add(c.id);
     return set;
   }, [visibleCustomers]);
   const actionableTasks = useMemo(
@@ -174,7 +174,7 @@ export default function Home() {
   const dueTodayTasks = useMemo(() => openTasks.filter((t) => t.dueDate === today), [openTasks, today]);
   const newLeads = useMemo(() => visibleCustomers.filter((c) => c.funnelStage === "lead" && c.contactResult === "chua_lien_he"), [visibleCustomers]);
   const hotCustomers = useMemo(
-    () => visibleCustomers.filter((c) => c.priority === "hot" && !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage)),
+    () => visibleCustomers.filter((c) => c.priority === "hot" && isActiveStage(c.funnelStage)),
     [visibleCustomers],
   );
   // Số trên menu "Việc hôm nay": khớp đúng màn hình (khách chưa liên hệ không bị đếm 2 lần).
@@ -195,8 +195,7 @@ export default function Home() {
   const filteredCustomers = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("vi");
     return visibleCustomers.filter((c) => {
-      if (stageFilter === "uncontacted") { if (!(c.funnelStage === "lead" && c.contactResult === "chua_lien_he")) return false; }
-      else if (stageFilter !== "all" && c.funnelStage !== stageFilter) return false;
+      if (stageFilter !== "all" && normalizeStage(c.funnelStage) !== stageFilter) return false;
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
       if (ownerFilter !== "all" && c.owner !== ownerFilter) return false;
       if (sourceFilter !== "all" && c.source !== sourceFilter) return false;
@@ -207,17 +206,17 @@ export default function Home() {
   }, [visibleCustomers, search, stageFilter, priorityFilter, ownerFilter, sourceFilter, projectStageFilter]);
 
   const pipelineValue = useMemo(
-    () => visibleCustomers.filter((c) => !["lost", "paused"].includes(c.funnelStage)).reduce((s, c) => s + c.value, 0),
+    () => visibleCustomers.filter((c) => c.funnelStage !== "lost").reduce((s, c) => s + c.value, 0),
     [visibleCustomers],
   );
   const wonRevenue = useMemo(
-    () => visibleCustomers.filter((c) => ["won", "aftercare", "delivering"].includes(c.funnelStage)).reduce((s, c) => s + c.value, 0),
+    () => visibleCustomers.filter((c) => isSoldStage(c.funnelStage)).reduce((s, c) => s + c.value, 0),
     [visibleCustomers],
   );
 
   const stageCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of visibleCustomers) counts.set(c.funnelStage, (counts.get(c.funnelStage) ?? 0) + 1);
+    for (const c of visibleCustomers) { const s = normalizeStage(c.funnelStage); counts.set(s, (counts.get(s) ?? 0) + 1); }
     return counts;
   }, [visibleCustomers]);
 
@@ -339,8 +338,8 @@ export default function Home() {
       itemCount: payload.itemCount,
     });
     if (!ok) return;
-    await addActivity(customer.id, `CHỐT ĐƠN: ${money(payload.value)}${payload.itemCount ? ` · ${payload.itemCount} món` : ""}${payload.note ? ` · ${payload.note}` : ""}`);
-    setToast("Đã chốt đơn 🎉");
+    await addActivity(customer.id, `ĐẶT CỌC: ${money(payload.value)}${payload.itemCount ? ` · ${payload.itemCount} món` : ""}${payload.note ? ` · ${payload.note}` : ""}`);
+    setToast("Khách đã đặt cọc 🎉");
     await refreshCore();
   }
 
@@ -596,15 +595,12 @@ function Dashboard(props: {
   onOpenCustomer: (id: number) => void; onAddCustomer: () => void; onGoStage: (stage: string) => void;
 }) {
   const { customers, newLeadsToday, overdueTasks, hotCustomers, showroomToday, siteVisitToday, pipelineValue, wonRevenue, onOpenCustomer, onAddCustomer, onGoStage } = props;
-  // Đếm theo mốc — nhất quán với Big Map: Chưa liên hệ (đầu) + 9 giai đoạn + Không chốt (cuối).
+  // Đếm theo 7 bước + Không chốt — nhất quán với Bản đồ khách hàng (giai đoạn cũ tự quy đổi).
   const funnelCounts = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of customers) {
-      let key: string;
-      if (c.funnelStage === "lost") key = "lost";
-      else if (c.funnelStage === "lead" && c.contactResult === "chua_lien_he") key = "uncontacted";
-      else key = (PIPELINE_STAGES as readonly string[]).includes(c.funnelStage) ? c.funnelStage : (STAGE_ALIAS[c.funnelStage] ?? "");
-      if (key) m.set(key, (m.get(key) ?? 0) + 1);
+      const key = normalizeStage(c.funnelStage);
+      m.set(key, (m.get(key) ?? 0) + 1);
     }
     return m;
   }, [customers]);
@@ -685,17 +681,15 @@ const SEGMENTS: { key: string; label: string }[] = [
   { key: "mine", label: "Của tôi" },
   { key: "hot", label: "🔥 Nóng" },
   { key: "new", label: "Chưa liên hệ" },
-  { key: "quote", label: "Cần follow báo giá" },
   { key: "overdue", label: "Quá hạn" },
 ];
 
 function passSegment(c: Customer, seg: string, person: string, today: string): boolean {
-  const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage);
+  const active = isActiveStage(c.funnelStage);
   switch (seg) {
     case "mine": return c.owner === person;
     case "hot": return c.priority === "hot" && active;
     case "new": return c.funnelStage === "lead" && c.contactResult === "chua_lien_he";
-    case "quote": return c.funnelStage === "quoted";
     case "overdue": return /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
     default: return true;
   }
@@ -750,8 +744,7 @@ function CustomersTable(props: {
       <section className="customer-hub-filters">
         <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả giai đoạn bán</option>
-          <option value="uncontacted">Chưa liên hệ</option>
-          {[...PIPELINE_STAGES, "paused", "lost"].map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
+          {[...PIPELINE_STAGES, "lost"].map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
         </select>
         <select value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setLimit(PAGE_SIZE); }}>
           <option value="all">Tất cả mức độ</option>
@@ -781,7 +774,7 @@ function CustomersTable(props: {
             <div className="crm-table-empty"><strong>Chưa có khách phù hợp bộ lọc</strong></div>
           ) : shown.map((c) => {
             const overdue = /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
-            const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage);
+            const active = isActiveStage(c.funnelStage);
             const noNext = active && !(c.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate));
             return (
               <button key={c.id} className="crm-table-row" style={{ gridTemplateColumns: COLS, ["--row-accent" as string]: FUNNEL_STAGE_COLOR[c.funnelStage] }} onClick={() => onOpen(c)}>

@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import type { Activity, Customer, Project, Task } from "../../lib/types";
 import { money, formatDate, todayISO } from "../../lib/format";
 import { computeCustomerFlags } from "../../lib/flags";
-import { PIPELINE_STAGES, STAGE_ALIAS } from "../../db/enums";
+import { PIPELINE_STAGES, isSoldStage, normalizeStage } from "../../db/enums";
 import {
   FUNNEL_STAGE_LABEL,
   FUNNEL_STAGE_COLOR,
@@ -59,7 +59,6 @@ const CONSTRUCTION_TIMELINE: {
   { label: "Bàn giao", stages: ["da_hoan_thanh"] },
 ];
 
-const SOLD_STAGES = new Set(["won", "delivering", "aftercare"]);
 const PRIORITY_STEPS = [
   { key: "cold", label: "Lạnh" },
   { key: "warm", label: "Ấm" },
@@ -95,13 +94,12 @@ export default function CustomerDetail(props: Props) {
   const hasNext = Boolean(customer.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate));
   const nextOverdue = hasNext && customer.nextContactDate < todayISO();
   const isLost = customer.funnelStage === "lost";
-  const isPaused = customer.funnelStage === "paused";
-  const isSold = SOLD_STAGES.has(customer.funnelStage);
+  const isSold = isSoldStage(customer.funnelStage);
   const consIndex = CONSTRUCTION_TIMELINE.findIndex((m) => m.stages.includes(customer.projectStage));
   // Bước bán hiện tại + bước kế tiếp (một chạm để chuyển — dùng được trên điện thoại).
-  const stageKey = STAGE_ALIAS[customer.funnelStage] ?? customer.funnelStage;
+  const stageKey = normalizeStage(customer.funnelStage);
   const stageIdx = (PIPELINE_STAGES as readonly string[]).indexOf(stageKey);
-  const nextStage = !isLost && !isPaused && stageIdx >= 0 && stageIdx < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[stageIdx + 1] : null;
+  const nextStage = !isLost && stageIdx >= 0 && stageIdx < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[stageIdx + 1] : null;
 
   // Bảng cơ hội bán hàng — dựng từ các nhóm hàng khách quan tâm (Bước 1: suy ra từ dữ liệu
   // hiện có; Bước 2 sẽ tách thành bảng cơ hội riêng chỉnh tay được từng dòng).
@@ -113,9 +111,9 @@ export default function CustomerDetail(props: Props) {
       if (primary && isSold) {
         return {
           label,
-          statusText: "Đã chốt",
+          statusText: "Đã đặt cọc",
           statusColor: FUNNEL_STAGE_COLOR.won,
-          info: customer.closedDate ? `Chốt ${formatDate(customer.closedDate)}` : "—",
+          info: customer.closedDate ? `Cọc ngày ${formatDate(customer.closedDate)}` : "—",
           value: money(customer.value),
         };
       }
@@ -134,7 +132,6 @@ export default function CustomerDetail(props: Props) {
   const warnings: string[] = [];
   if (flags.overdueTaskCount > 0) warnings.push(`Có ${flags.overdueTaskCount} việc quá hạn`);
   if (flags.isHotAtRisk) warnings.push("Khách HOT >48h không tương tác — nguy cơ mất khách");
-  if (flags.quoteNeedsFollowUp) warnings.push("Đã báo giá >24h — cần follow báo giá");
   if (flags.showroomToday) warnings.push("Lịch showroom hôm nay");
   if (flags.siteVisitToday) warnings.push("Lịch công trình hôm nay");
 
@@ -142,7 +139,7 @@ export default function CustomerDetail(props: Props) {
   const banner = isLost
     ? { tone: "lost", label: "KHÔNG CHỐT", value: money(customer.value), sub: `Lý do: ${LOSS_REASON_LABEL[customer.lossReason] ?? "chưa rõ"}` }
     : isSold
-      ? { tone: "won", label: "DOANH SỐ ĐÃ CHỐT", value: money(customer.value), sub: `${customer.need || products[0] || "Đơn hàng"}${customer.closedDate ? ` · chốt ngày ${formatDate(customer.closedDate)}` : ""}` }
+      ? { tone: "won", label: "ĐÃ ĐẶT CỌC · GIÁ TRỊ ĐƠN", value: money(customer.value), sub: `${customer.need || products[0] || "Đơn hàng"}${customer.closedDate ? ` · đặt cọc ngày ${formatDate(customer.closedDate)}` : ""}` }
       : { tone: "open", label: "GIÁ TRỊ CƠ HỘI", value: customer.value ? money(customer.value) : "Chưa xác định", sub: customer.expectedCloseDate ? `Dự kiến chốt ${formatDate(customer.expectedCloseDate)}` : "Chưa có ngày chốt dự kiến" };
 
   function submitNote(event: FormEvent) {
@@ -369,7 +366,6 @@ export default function CustomerDetail(props: Props) {
               >
                 <option value="">Chọn bước khác…</option>
                 {PIPELINE_STAGES.filter((s) => s !== stageKey).map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
-                {customer.funnelStage !== "paused" ? <option value="paused">Tạm hoãn</option> : null}
                 {!isLost ? <option value="lost">Không chốt</option> : null}
               </select>
             </section>
@@ -391,9 +387,9 @@ export default function CustomerDetail(props: Props) {
                 <button
                   className={`cdx-temp won${isSold ? " active" : ""}`}
                   style={{ ["--c" as string]: FUNNEL_STAGE_COLOR.won }}
-                  onClick={() => onChangeStage(customer, "won")}
+                  onClick={() => { if (!isSold) onChangeStage(customer, "won"); }}
                 >
-                  Đã chốt
+                  Đã đặt cọc
                 </button>
               </div>
             </section>

@@ -1,33 +1,44 @@
 // Nhãn tiếng Việt hiển thị trên giao diện cho các mã lưu trong DB (db/enums.ts).
 
-export const FUNNEL_STAGE_LABEL: Record<string, string> = {
-  lead: "Lead mới",
-  consulting: "Đang tư vấn",
-  appointment: "Hẹn showroom",
-  arrived: "Đã đến showroom",
-  site_survey: "Khảo sát công trình",
-  quoted: "Đã báo giá",
-  negotiating: "Follow-up / Đàm phán",
-  won: "Đã chốt",
-  delivering: "Đang giao/lắp",
+const STAGE_LABEL_BASE: Record<string, string> = {
+  lead: "Khách hàng mới",
+  consulting: "Đang tư vấn qua điện thoại",
+  arrived: "Đã đến Showroom",
+  won: "Đã đặt cọc",
+  delivering: "Đang lấy hàng gạch ốp lát",
+  delivering_fixtures: "Đang lấy hàng thiết bị phòng tắm / bếp",
   aftercare: "Hoàn thành / Hậu mãi",
   lost: "Không chốt",
-  paused: "Tạm hoãn",
+};
+
+const STAGE_COLOR_BASE: Record<string, string> = {
+  lead: "#3a7bd5",
+  consulting: "#f5a623",
+  arrived: "#7d5bd0",
+  won: "#08751d",
+  delivering: "#d86400",
+  delivering_fixtures: "#0f9b8e",
+  aftercare: "#d63384",
+  lost: "#94a3a0",
+};
+
+// Khoá giai đoạn cũ hiển thị theo bước mới tương ứng (xem STAGE_ALIAS trong db/enums).
+const LEGACY_STAGE: Record<string, string> = {
+  appointment: "consulting",
+  paused: "consulting",
+  site_survey: "arrived",
+  quoted: "arrived",
+  negotiating: "arrived",
+};
+
+export const FUNNEL_STAGE_LABEL: Record<string, string> = {
+  ...STAGE_LABEL_BASE,
+  ...Object.fromEntries(Object.entries(LEGACY_STAGE).map(([k, v]) => [k, STAGE_LABEL_BASE[v]])),
 };
 
 export const FUNNEL_STAGE_COLOR: Record<string, string> = {
-  lead: "#3a7bd5",
-  consulting: "#f5a623",
-  appointment: "#9b59b6",
-  arrived: "#7d5bd0",
-  site_survey: "#0f9b8e",
-  quoted: "#e4542d",
-  negotiating: "#d86400",
-  won: "#08751d",
-  delivering: "#128f18",
-  aftercare: "#d63384",
-  lost: "#94a3a0",
-  paused: "#8b8b8b",
+  ...STAGE_COLOR_BASE,
+  ...Object.fromEntries(Object.entries(LEGACY_STAGE).map(([k, v]) => [k, STAGE_COLOR_BASE[v]])),
 };
 
 // lead_temperature: HOT / WARM / NURTURE (khoá DB giữ nguyên hot/warm/cold).

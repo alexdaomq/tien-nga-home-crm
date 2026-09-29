@@ -1,19 +1,7 @@
 // Các cờ (flag) cảnh báo tính ở client từ dữ liệu khách + việc cần làm.
 // Đây là "bộ não" thúc đẩy hành động của CRM — mọi cảnh báo trong brief đều bắt nguồn từ đây.
 import type { Customer, Task } from "./types";
-
-// Stage được coi là "đang active" — bắt buộc phải có Next Action.
-export const ACTIVE_STAGES = new Set([
-  "lead",
-  "consulting",
-  "appointment",
-  "arrived",
-  "site_survey",
-  "quoted",
-  "negotiating",
-]);
-
-export const CLOSED_STAGES = new Set(["won", "aftercare", "delivering", "lost", "paused"]);
+import { isActiveStage } from "../db/enums";
 
 function hoursSince(timestamp: string, nowMs: number): number | null {
   if (!timestamp) return null;
@@ -28,7 +16,6 @@ export type CustomerFlags = {
   needsFollowUp: boolean; // active nhưng không có next action
   isNewUnhandled: boolean; // lead mới chưa liên hệ
   isHotAtRisk: boolean; // HOT nhưng >48h không tương tác
-  quoteNeedsFollowUp: boolean; // đã báo giá >24h chưa có việc follow
   showroomToday: boolean;
   siteVisitToday: boolean;
   overdueTaskCount: number;
@@ -45,7 +32,7 @@ export function computeCustomerFlags(
   const overdueTaskCount = openTasks.filter((task) => task.dueDate < todayIso).length;
   const dueTodayTaskCount = openTasks.filter((task) => task.dueDate === todayIso).length;
 
-  const isActive = ACTIVE_STAGES.has(customer.funnelStage);
+  const isActive = isActiveStage(customer.funnelStage);
   const hasNextAction = Boolean(
     customer.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate),
   ) || openTasks.length > 0;
@@ -61,13 +48,6 @@ export function computeCustomerFlags(
     isActive &&
     lastTouchHours !== null &&
     lastTouchHours > 48;
-
-  const quotedHours = hoursSince(customer.updatedAt, nowMs);
-  const quoteNeedsFollowUp =
-    customer.funnelStage === "quoted" &&
-    quotedHours !== null &&
-    quotedHours > 24 &&
-    openTasks.length === 0;
 
   const showroomToday =
     (customer.appointmentDate.slice(0, 10) === todayIso && !customer.arrived) ||
@@ -85,7 +65,6 @@ export function computeCustomerFlags(
     needsFollowUp,
     isNewUnhandled,
     isHotAtRisk,
-    quoteNeedsFollowUp,
     showroomToday,
     siteVisitToday,
     overdueTaskCount,

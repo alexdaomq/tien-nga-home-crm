@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Customer } from "../../lib/types";
-import { PIPELINE_STAGES, STAGE_ALIAS } from "../../db/enums";
+import { PIPELINE_STAGES, isActiveStage, normalizeStage } from "../../db/enums";
 import { FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR } from "../../lib/labels";
 import { formatDate, money, todayISO } from "../../lib/format";
 
@@ -21,27 +21,16 @@ function canHover(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
 }
 
-// Các mốc trên timeline: "Chưa liên hệ" (data thô) đầu phễu, 9 giai đoạn pipeline,
-// "Không chốt" (mất khách) cuối phễu.
-const START_KEY = "uncontacted";
-const LOST_KEY = "lost";
-const NODES: { key: string; label: string; color: string }[] = [
-  { key: START_KEY, label: "Chưa liên hệ", color: "#8b8b8b" },
-  ...PIPELINE_STAGES.map((s) => ({ key: s, label: FUNNEL_STAGE_LABEL[s], color: FUNNEL_STAGE_COLOR[s] })),
-  { key: LOST_KEY, label: "Không chốt", color: "#94a3a0" },
-];
-const LINE_GRADIENT = "linear-gradient(90deg,#8b8b8b,#3a7bd5,#f5a623,#9b59b6,#7d5bd0,#0f9b8e,#e4542d,#d86400,#08751d,#d63384,#94a3a0)";
+// 8 mốc: 7 bước bán hàng + "Không chốt" ở cuối (giai đoạn cũ tự quy đổi qua normalizeStage).
+const NODES: { key: string; label: string; color: string }[] = [...PIPELINE_STAGES, "lost"].map((s) => ({
+  key: s,
+  label: FUNNEL_STAGE_LABEL[s],
+  color: FUNNEL_STAGE_COLOR[s],
+}));
+const LINE_GRADIENT = `linear-gradient(90deg,${NODES.map((n) => n.color).join(",")})`;
 
-function stageColumnOf(stage: string): string {
-  if ((PIPELINE_STAGES as readonly string[]).includes(stage)) return stage;
-  return STAGE_ALIAS[stage] ?? "";
-}
-
-// Mốc mà khách thuộc về: chưa liên hệ > mất khách > giai đoạn pipeline (bỏ tạm hoãn).
 function bucketOf(c: Customer): string {
-  if (c.funnelStage === "lost") return LOST_KEY;
-  if (c.funnelStage === "lead" && c.contactResult === "chua_lien_he") return START_KEY;
-  return stageColumnOf(c.funnelStage);
+  return normalizeStage(c.funnelStage);
 }
 
 function seeded(id: number, salt: number): number {
@@ -50,8 +39,8 @@ function seeded(id: number, salt: number): number {
 }
 
 function isWarn(c: Customer, today: string, nowMs: number): boolean {
-  if (c.funnelStage === "lost" || c.funnelStage === "paused") return false;
-  const active = !["won", "aftercare", "delivering"].includes(c.funnelStage);
+  if (c.funnelStage === "lost") return false;
+  const active = isActiveStage(c.funnelStage);
   const overdue = /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
   const noNext = active && !(c.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate));
   let hotAtRisk = false;
@@ -100,7 +89,7 @@ export default function PipelineMap({ customers, onOpen }: Props) {
     }
     // Chừa TIP_SPACE phía trên chấm cao nhất để tooltip (tên, SĐT, sale, việc tới) không bị cắt.
     const centerY = TIP_SPACE + maxRows * ROW_GAP;
-    const wrapH = centerY + 78;
+    const wrapH = centerY + 96; // đủ cho nhãn bước dài 3 dòng + số khách
     const dots: Dot[] = [];
     const nodeInfo = NODES.map((node, i) => {
       const list = (byKey.get(node.key) ?? []).slice().sort((a, b) => b.value - a.value);

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Customer, Task } from "../../lib/types";
-import { PIPELINE_STAGES, OFF_PIPELINE_STAGES, STAGE_ALIAS } from "../../db/enums";
+import { PIPELINE_STAGES, OFF_PIPELINE_STAGES, isActiveStage, normalizeStage } from "../../db/enums";
 import { FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR, PRIORITY_EMOJI, PRIORITY_LABEL, PRIORITY_COLOR } from "../../lib/labels";
 import { money, formatDate } from "../../lib/format";
 
@@ -18,8 +18,8 @@ type Props = {
 const COLUMNS = [...PIPELINE_STAGES, ...OFF_PIPELINE_STAGES];
 
 function stageColumnOf(stage: string): string {
-  if (COLUMNS.includes(stage as (typeof COLUMNS)[number])) return stage;
-  return STAGE_ALIAS[stage] ?? "lead";
+  const s = normalizeStage(stage);
+  return (COLUMNS as readonly string[]).includes(s) ? s : "lead";
 }
 
 export default function PipelineBoard({ customers, tasksByCustomer, today, onOpen, onChangeStage, onRequestLost }: Props) {
@@ -37,7 +37,7 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
   }, [customers]);
 
   const totalValue = useMemo(
-    () => customers.filter((c) => !["lost", "paused"].includes(stageColumnOf(c.funnelStage))).reduce((sum, c) => sum + c.value, 0),
+    () => customers.filter((c) => stageColumnOf(c.funnelStage) !== "lost").reduce((sum, c) => sum + c.value, 0),
     [customers],
   );
 
@@ -89,7 +89,7 @@ export default function PipelineBoard({ customers, tasksByCustomer, today, onOpe
                     const openTasks = tasks.filter((t) => t.status === "open");
                     const overdue = openTasks.some((t) => t.dueDate < today) ||
                       (/^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate) && customer.nextContactDate < today);
-                    const active = !["won", "aftercare", "delivering", "lost", "paused"].includes(customer.funnelStage);
+                    const active = isActiveStage(customer.funnelStage);
                     const noNextAction = active && !(customer.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(customer.nextContactDate));
                     const idx = (PIPELINE_STAGES as readonly string[]).indexOf(stage);
                     const nextStage = idx >= 0 && idx < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[idx + 1] : null;

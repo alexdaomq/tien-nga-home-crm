@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Customer, Task } from "../../lib/types";
 import { FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR, PRIORITY_EMOJI, PRIORITY_LABEL } from "../../lib/labels";
 import { money, formatDate, addDays } from "../../lib/format";
+import { isActiveStage } from "../../db/enums";
 
 type Props = {
   person: string;
@@ -50,7 +51,7 @@ export default function TodayView({ person, tasks, customers, today, onOpenCusto
   );
   const hotCustomers = useMemo(
     () => customers
-      .filter((c) => c.priority === "hot" && !["won", "aftercare", "delivering", "lost", "paused"].includes(c.funnelStage))
+      .filter((c) => c.priority === "hot" && isActiveStage(c.funnelStage))
       .sort((a, b) => (a.nextContactDate || "9999").localeCompare(b.nextContactDate || "9999")),
     [customers],
   );

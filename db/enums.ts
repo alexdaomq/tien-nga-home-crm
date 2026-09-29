@@ -1,45 +1,51 @@
 // Danh sách giá trị hợp lệ dùng chung giữa API và giao diện.
 // Giữ khoá tiếng Anh/không dấu trong DB, nhãn tiếng Việt chỉ hiển thị ở UI (lib/labels.ts).
 
-// Toàn bộ giá trị hợp lệ của cột customers.funnel_stage (gồm cả giá trị cũ "delivering"
-// để không phá dữ liệu bản v1). Thứ tự cột Kanban dùng PIPELINE_STAGES bên dưới.
-export const FUNNEL_STAGES = [
-  "lead",
-  "consulting",
-  "appointment",
-  "arrived",
-  "site_survey",
-  "quoted",
-  "negotiating",
-  "won",
-  "delivering",
-  "aftercare",
-  "lost",
-  "paused",
-] as const;
-export type FunnelStage = (typeof FUNNEL_STAGES)[number];
-
-// 9 cột pipeline chính theo brief B2C (kéo/thả giữa các cột này).
+// 7 bước bán hàng chính của Tiến Nga (+ "Không chốt" ở ngoài). Giữ lại khoá DB cũ
+// khi nghĩa trùng (lead/consulting/arrived/won/delivering/aftercare/lost) để dữ liệu
+// đang chạy không phải đổi; chỉ thêm 1 khoá mới "delivering_fixtures".
 export const PIPELINE_STAGES = [
-  "lead",
-  "consulting",
-  "appointment",
-  "arrived",
-  "site_survey",
-  "quoted",
-  "negotiating",
-  "won",
-  "aftercare",
+  "lead", // Khách hàng mới
+  "consulting", // Đang tư vấn qua điện thoại
+  "arrived", // Đã đến Showroom
+  "won", // Đã đặt cọc
+  "delivering", // Đang lấy hàng gạch ốp lát
+  "delivering_fixtures", // Đang lấy hàng thiết bị phòng tắm / bếp
+  "aftercare", // Hoàn thành / Hậu mãi
 ] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
-// Ngoài pipeline chính: tạm hoãn & mất khách.
-export const OFF_PIPELINE_STAGES = ["paused", "lost"] as const;
+export const OFF_PIPELINE_STAGES = ["lost"] as const; // Không chốt
 
-// Giá trị cũ được gom về cột nào khi hiển thị Kanban.
+// Giá trị hợp lệ khi GHI vào customers.funnel_stage.
+export const FUNNEL_STAGES = [...PIPELINE_STAGES, ...OFF_PIPELINE_STAGES] as const;
+export type FunnelStage = (typeof FUNNEL_STAGES)[number];
+
+// Khoá giai đoạn cũ (bộ 11 bước trước đây) -> bước mới tương ứng.
 export const STAGE_ALIAS: Record<string, string> = {
-  delivering: "won",
+  appointment: "consulting",
+  paused: "consulting",
+  site_survey: "arrived",
+  quoted: "arrived",
+  negotiating: "arrived",
 };
+
+export function normalizeStage(stage: string): string {
+  return STAGE_ALIAS[stage] ?? stage;
+}
+
+// Đã đặt cọc trở đi = đã bán (tính doanh thu, không còn cảnh báo "chưa có việc tiếp theo").
+export const SOLD_STAGES: ReadonlySet<string> = new Set(["won", "delivering", "delivering_fixtures", "aftercare"]);
+
+export function isSoldStage(stage: string): boolean {
+  return SOLD_STAGES.has(normalizeStage(stage));
+}
+
+// Đang theo đuổi (chưa cọc, chưa rời phễu) — bắt buộc luôn có việc tiếp theo.
+export function isActiveStage(stage: string): boolean {
+  const s = normalizeStage(stage);
+  return s !== "lost" && !SOLD_STAGES.has(s);
+}
 
 // lead_temperature theo brief: HOT / WARM / NURTURE. Giữ khoá DB cũ (hot/warm/cold)
 // để không phải migrate dữ liệu — chỉ đổi nhãn "cold" thành "Nuôi dưỡng" ở labels.

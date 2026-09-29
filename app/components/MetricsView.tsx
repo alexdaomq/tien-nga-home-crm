@@ -5,7 +5,7 @@ import type { Customer, MetricsResponse } from "../../lib/types";
 import { TEAM_MEMBERS } from "../../lib/types";
 import { money, formatDate, todayISO } from "../../lib/format";
 import { LOSS_REASON_LABEL, FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR } from "../../lib/labels";
-import { PIPELINE_STAGES } from "../../db/enums";
+import { PIPELINE_STAGES, isSoldStage, normalizeStage } from "../../db/enums";
 import { deriveCalendarToken } from "../../lib/calendar-feed";
 
 const CALENDAR_PEOPLE = ["all", ...TEAM_MEMBERS] as const;
@@ -32,7 +32,6 @@ type FbCampaign = {
 };
 
 const FB_ADS_MANAGER_URL = "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1378071637200779&business_id=1695978451198571";
-const SOLD_STAGES = new Set(["won", "delivering", "aftercare"]);
 
 // Màu cho tỷ lệ Ads/Doanh thu: càng thấp càng tốt.
 function ratioColor(pct: number | null): string {
@@ -198,10 +197,12 @@ export default function MetricsView({
     const bySource = new Map<string, number>();
     let pipelineValue = 0, wonRevenue = 0, monthWonRevenue = 0;
     for (const c of customers) {
-      const st = byStage.get(c.funnelStage) ?? { count: 0, value: 0 };
-      st.count += 1; st.value += c.value; byStage.set(c.funnelStage, st);
-      if (!["lost", "paused"].includes(c.funnelStage) && !SOLD_STAGES.has(c.funnelStage)) pipelineValue += c.value;
-      if (SOLD_STAGES.has(c.funnelStage)) {
+      const stage = normalizeStage(c.funnelStage);
+      const st = byStage.get(stage) ?? { count: 0, value: 0 };
+      st.count += 1; st.value += c.value; byStage.set(stage, st);
+      const sold = isSoldStage(stage);
+      if (stage !== "lost" && !sold) pipelineValue += c.value;
+      if (sold) {
         wonRevenue += c.value;
         bySource.set(c.source, (bySource.get(c.source) ?? 0) + c.value);
         if (month && c.closedDate.slice(0, 7) === month) monthWonRevenue += c.value;

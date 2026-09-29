@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { activities, customers } from "../../../db/schema";
-import { CONTACT_RESULTS, FUNNEL_STAGES, LOSS_REASONS, PRIORITIES } from "../../../db/enums";
+import { CONTACT_RESULTS, FUNNEL_STAGES, LOSS_REASONS, PRIORITIES, normalizeStage } from "../../../db/enums";
 import { buildSeedCustomers } from "../../../db/seed";
 
 const allowedStages = new Set<string>(FUNNEL_STAGES);
@@ -49,7 +49,7 @@ function fieldsFromPayload(payload: Record<string, unknown>, existing?: typeof c
     campaign: text("campaign"),
     referrer: text("referrer"),
     constructionStageAtLead: text("constructionStageAtLead"),
-    funnelStage: payload.funnelStage === undefined ? undefined : String(payload.funnelStage),
+    funnelStage: payload.funnelStage === undefined ? undefined : normalizeStage(String(payload.funnelStage)),
     priority: payload.priority === undefined ? undefined : String(payload.priority).trim(),
     firstCallAt: text("firstCallAt"),
     contactResult: payload.contactResult === undefined ? undefined : String(payload.contactResult),
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as Record<string, unknown>;
     const fullName = String(payload.fullName ?? "").trim();
     const phone = String(payload.phone ?? "").trim();
-    const funnelStage = String(payload.funnelStage ?? "lead");
+    const funnelStage = normalizeStage(String(payload.funnelStage ?? "lead"));
     const priority = String(payload.priority ?? "warm");
     const contactResult = String(payload.contactResult ?? "chua_lien_he");
     if (fullName.length < 2) return Response.json({ error: "Vui lòng nhập họ tên khách hàng." }, { status: 400 });
@@ -209,7 +209,7 @@ export async function PATCH(request: Request) {
     const payload = (await request.json()) as Record<string, unknown>;
     const id = Number(payload.id);
     if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Khách hàng chưa hợp lệ." }, { status: 400 });
-    if (payload.funnelStage !== undefined && !allowedStages.has(String(payload.funnelStage))) {
+    if (payload.funnelStage !== undefined && !allowedStages.has(normalizeStage(String(payload.funnelStage)))) {
       return Response.json({ error: "Trạng thái phễu chưa hợp lệ." }, { status: 400 });
     }
     if (payload.priority !== undefined && !allowedPriorities.has(String(payload.priority))) {
@@ -255,7 +255,7 @@ export async function PATCH(request: Request) {
       campaign: fields.campaign,
       referrer: fields.referrer,
       constructionStageAtLead: fields.constructionStageAtLead,
-      funnelStage: payload.funnelStage === undefined ? undefined : String(payload.funnelStage),
+      funnelStage: fields.funnelStage,
       priority: fields.priority,
       firstCallAt: fields.firstCallAt ?? autoFirstCallAt,
       contactResult: payload.contactResult === undefined ? undefined : String(payload.contactResult),

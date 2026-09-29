@@ -6,7 +6,8 @@ import { TEAM_MEMBERS } from "../../lib/types";
 import { todayISO } from "../../lib/format";
 import {
   SOURCES,
-  FUNNEL_STAGES,
+  PIPELINE_STAGES,
+  normalizeStage,
   PRIORITIES,
   PROJECT_STAGES,
   PROJECT_TYPES,
@@ -151,7 +152,7 @@ export default function CustomerForm({ mode, customer, person, saving, onSubmit,
                 <input placeholder="Địa chỉ công trình" value={form.address} onChange={(e) => set("address", e.target.value)} />
                 <input placeholder="Chiến dịch / nội dung nguồn" value={form.campaign} onChange={(e) => set("campaign", e.target.value)} />
                 <select value={form.funnelStage} onChange={(e) => set("funnelStage", e.target.value)}>
-                  {FUNNEL_STAGES.filter((s) => s !== "lost").map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
+                  {PIPELINE_STAGES.map((s) => <option key={s} value={s}>{FUNNEL_STAGE_LABEL[s]}</option>)}
                 </select>
               </div>
 
@@ -210,7 +211,7 @@ function initForm(customer: Customer | null | undefined, person: string) {
     ward: customer?.ward ?? "",
     source: customer?.source ?? "Facebook",
     campaign: customer?.campaign ?? "",
-    funnelStage: customer?.funnelStage ?? "lead",
+    funnelStage: normalizeStage(customer?.funnelStage ?? "lead"),
     priority: customer?.priority ?? "warm",
     need: customer?.need ?? "",
     projectType: customer?.projectType ?? "",

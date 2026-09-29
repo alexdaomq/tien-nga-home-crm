@@ -2,6 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { appSettings, customers, dailyMetrics, projectItems, projects } from "../../../db/schema";
 import { median, minutesBetween, percent, todayISO } from "../../../lib/format";
+import { isSoldStage } from "../../../db/enums";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Có lỗi xảy ra với chỉ số vận hành.";
@@ -18,14 +19,14 @@ function computeFunnelKpis(rows: (typeof customers.$inferSelect)[], adSpend: num
   const contacted = rows.filter((row) => row.contactResult === "da_lien_he").length;
   const withAppointment = rows.filter((row) => row.appointmentDate.trim() !== "").length;
   const arrived = rows.filter((row) => row.arrived === 1).length;
-  const won = rows.filter((row) => row.funnelStage === "won").length;
+  const won = rows.filter((row) => isSoldStage(row.funnelStage)).length;
   const referrals = rows.filter((row) => row.source === "Giới thiệu").length;
 
   const firstCallMinutes = rows
     .map((row) => (row.firstCallAt.trim() ? minutesBetween(row.receivedAt, row.firstCallAt) : null))
     .filter((value): value is number => value !== null);
 
-  const wonRows = rows.filter((row) => row.funnelStage === "won");
+  const wonRows = rows.filter((row) => isSoldStage(row.funnelStage));
   const aov = wonRows.length ? wonRows.reduce((sum, row) => sum + row.value, 0) / wonRows.length : 0;
   const avgItemCount = wonRows.length ? wonRows.reduce((sum, row) => sum + row.itemCount, 0) / wonRows.length : 0;
 

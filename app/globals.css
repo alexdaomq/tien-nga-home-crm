@@ -1484,9 +1484,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .pmap-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .pmap-toggle input { width: 15px; height: 15px; }
 .pmap-scroll { overflow-x: auto; overflow-y: hidden; margin: 4px 6px 0; }
-.pmap-wrap { position: relative; min-width: 1240px; } /* chiều cao đặt động theo số khách (inline) */
+.pmap-wrap { position: relative; min-width: 1200px; } /* chiều cao đặt động theo số khách (inline) */
 .pmap-line { position: absolute; left: 3%; right: 3%; height: 3px; border-radius: 2px; } /* top đặt động (inline) */
-.pmap-node { position: absolute; transform: translateX(-50%); text-align: center; width: 108px; }
+.pmap-node { position: absolute; transform: translateX(-50%); text-align: center; width: 128px; }
 .pmap-node-dot { width: 12px; height: 12px; border-radius: 50%; margin: -18px auto 8px; border: 2px solid #fff; }
 .pmap-node-label { font-size: 12px; font-weight: 700; color: var(--ink); line-height: 1.15; }
 .pmap-node-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }

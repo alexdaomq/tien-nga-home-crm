@@ -58,6 +58,18 @@ Bản v2.1 giữ nguyên stack (vinext + Drizzle + D1/sql.js), tab Nhà cung c�
 
 Chưa làm (P1/P2): quản lý báo giá nhiều phiên bản, báo cáo nâng cao, notifications realtime; tích hợp Zalo/Facebook/AI — chỉ chuẩn bị kiến trúc.
 
+## Cập nhật 09/2026 — rút gọn còn 8 giai đoạn bán hàng
+
+Thay bộ 11 bước cũ bằng 7 bước + "Không chốt" (định nghĩa ở `db/enums.ts`, nhãn/màu ở `lib/labels.ts`):
+`lead` Khách hàng mới → `consulting` Đang tư vấn qua điện thoại → `arrived` Đã đến Showroom → `won` Đã đặt cọc →
+`delivering` Đang lấy hàng gạch ốp lát → `delivering_fixtures` Đang lấy hàng thiết bị phòng tắm / bếp → `aftercare` Hoàn thành / Hậu mãi; `lost` Không chốt.
+
+- Giữ khoá DB cũ khi nghĩa trùng; khoá cũ bị bỏ được quy đổi qua `STAGE_ALIAS`/`normalizeStage()` (appointment, paused → consulting; site_survey, quoted, negotiating → arrived). API tự quy đổi khi ghi; giao diện tự quy đổi khi hiển thị/đếm.
+- "Đã bán" = từ `won` trở đi (`isSoldStage`); "đang theo đuổi, bắt buộc có việc tiếp theo" = trước `won` (`isActiveStage`). Không còn stage "Tạm hoãn" và cờ "đã báo giá >24h".
+- Chuẩn hoá dữ liệu cũ trên D1 (tuỳ chọn, app vẫn chạy đúng nếu chưa chạy):
+  `UPDATE customers SET funnel_stage='consulting' WHERE funnel_stage IN ('appointment','paused');`
+  `UPDATE customers SET funnel_stage='arrived' WHERE funnel_stage IN ('site_survey','quoted','negotiating');`
+
 ## Logic tự động quan trọng cần biết
 
 - **Nhắc bán chéo tự động** (`app/api/tasks/route.ts`, hàm `syncCrossSellTasks`): mỗi khi tải "Việc cần làm", hệ thống quét các công trình đang triển khai có ngày giao gạch, tự sinh 4 việc theo lịch thi công (kiểm tra hàng · chốt TBVS trước ốp lát · xin ảnh + hỏi kế hoạch bếp · chốt đơn bếp) — đúng tinh thần Playbook bán chéo. Mốc ngày là kiến thức ngành phổ thông, có thể chỉnh trong hằng số `CROSS_SELL_TOUCHPOINTS`.

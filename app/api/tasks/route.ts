@@ -59,8 +59,8 @@ async function syncAutoFollowupTasks(db: ReturnType<typeof getDb>) {
   ]);
 
   for (const plan of customerPlans) {
-    // Khách đã mất/tạm hoãn thì không tự sinh việc tiếp theo nữa.
-    if (plan.funnelStage === "lost" || plan.funnelStage === "paused") continue;
+    // Khách "Không chốt" thì không tự sinh việc tiếp theo nữa.
+    if (plan.funnelStage === "lost") continue;
     const title = plan.nextAction.trim();
     const dueDate = plan.nextContactDate.trim();
     const dueTime = /^\d{2}:\d{2}$/.test(plan.nextActionTime.trim()) ? plan.nextActionTime.trim() : suggestTaskTime(title);
