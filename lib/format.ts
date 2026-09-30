@@ -9,6 +9,18 @@ export function formatDate(value: string) {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
+// DB lưu thời điểm bằng CURRENT_TIMESTAMP (giờ UTC, "YYYY-MM-DD HH:MM:SS") -> đổi sang giờ Việt Nam.
+export function formatDateTimeVN(value: string): { date: string; time: string } | null {
+  if (!value) return null;
+  const d = new Date(/[TZ]/.test(value) ? value : value.replace(" ", "T") + "Z");
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("day")}/${get("month")}/${get("year")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
 export function todayISO() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
 }

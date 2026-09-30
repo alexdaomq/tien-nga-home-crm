@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Task } from "../../lib/types";
 import { TASK_TYPE_LABEL } from "../../lib/labels";
-import { formatDate, todayISO, addDays } from "../../lib/format";
+import { formatDate, formatDateTimeVN, todayISO, addDays } from "../../lib/format";
 
 const COMPLETED_TABLE_COLUMNS = "1.1fr 1.8fr 1.5fr 1.1fr 1fr 1fr";
 
@@ -156,7 +156,7 @@ export function CompletedBoard({ tasks }: { tasks: Task[] }) {
             </div>
             {completed.map((task) => (
               <div className="crm-table-row" style={{ gridTemplateColumns: COMPLETED_TABLE_COLUMNS, cursor: "default" }} key={task.id}>
-                <div className="crm-cell"><span>{formatDate((task.updatedAt || "").slice(0, 10))}</span></div>
+                <div className="crm-cell"><span>{(() => { const t = formatDateTimeVN(task.updatedAt); return t ? `${t.date} ${t.time}` : "—"; })()}</span></div>
                 <div className="crm-cell"><strong>{task.title}</strong></div>
                 <div className="crm-cell"><span>{taskLabel(task)}</span></div>
                 <div className="crm-cell"><span className="completed-type">{TASK_TYPE_LABEL[task.type] ?? task.type}</span></div>

@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import type { Activity, Customer, Project, Task } from "../../lib/types";
-import { money, formatDate, todayISO } from "../../lib/format";
+import { money, formatDate, formatDateTimeVN, todayISO } from "../../lib/format";
 import { computeCustomerFlags } from "../../lib/flags";
 import { PIPELINE_STAGES, isSoldStage, normalizeStage } from "../../db/enums";
 import {
@@ -266,7 +266,7 @@ export default function CustomerDetail(props: Props) {
                       <div className="timeline-dot" />
                       <div>
                         <div style={{ fontSize: 13 }}>{activity.content}</div>
-                        <small style={{ color: "var(--muted)" }}>{activity.enteredBy} · {formatDate(activity.createdAt.slice(0, 10))} {activity.createdAt.slice(11, 16)}</small>
+                        <small style={{ color: "var(--muted)" }}>{activity.enteredBy} · {(() => { const t = formatDateTimeVN(activity.createdAt); return t ? `${t.date} ${t.time}` : "—"; })()}</small>
                       </div>
                     </div>
                   ))

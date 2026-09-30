@@ -19,7 +19,7 @@ import LostReasonModal, { LostPayload } from "./components/LostReasonModal";
 import WonModal, { WonPayload } from "./components/WonModal";
 import type { Activity, Customer, MetricsResponse, Project, Task, ViewKey } from "../lib/types";
 import { TEAM_MEMBERS, roleOf } from "../lib/types";
-import { money, formatDate, todayISO } from "../lib/format";
+import { money, formatDate, formatDateTimeVN, todayISO } from "../lib/format";
 import { groupTasksByCustomer } from "../lib/flags";
 import {
   FUNNEL_STAGE_COLOR,
@@ -723,7 +723,7 @@ function CustomersTable(props: {
   onOpen: (c: Customer) => void; onAddCustomer: () => void; onImport: () => void;
 }) {
   const { customers, today, person, stageFilter, setStageFilter, priorityFilter, setPriorityFilter, ownerFilter, setOwnerFilter, sourceFilter, setSourceFilter, projectStageFilter, setProjectStageFilter, onOpen, onAddCustomer, onImport } = props;
-  const COLS = "1.6fr 1fr 1fr 0.9fr 1fr 0.8fr 1.6fr";
+  const COLS = "1.6fr 1fr 1fr 0.7fr 1fr 0.8fr 1.6fr 1fr";
   const [segment, setSegment] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const activeFilters = [stageFilter, priorityFilter, ownerFilter, sourceFilter, projectStageFilter].filter((v) => v !== "all").length;
@@ -787,7 +787,7 @@ function CustomersTable(props: {
       <section className="customer-hub-table">
         <div className="crm-table-scroll">
           <div className="crm-table-head" style={{ gridTemplateColumns: COLS }}>
-            <span>Khách hàng</span><span>Khu vực</span><span>Giai đoạn</span><span>Mức độ</span><span>Giá trị</span><span>Sale</span><span>Việc tiếp theo</span>
+            <span>Khách hàng</span><span>Khu vực</span><span>Giai đoạn</span><span>Mức độ</span><span>Giá trị</span><span>Sale</span><span>Việc tiếp theo</span><span>Ngày nhập</span>
           </div>
           {shown.length === 0 ? (
             <div className="crm-table-empty"><strong>Chưa có khách phù hợp bộ lọc</strong></div>
@@ -795,6 +795,7 @@ function CustomersTable(props: {
             const overdue = /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate) && c.nextContactDate < today;
             const active = isActiveStage(c.funnelStage);
             const noNext = active && !(c.nextAction.trim() && /^\d{4}-\d{2}-\d{2}$/.test(c.nextContactDate));
+            const created = formatDateTimeVN(c.createdAt);
             return (
               <button key={c.id} className="crm-table-row" style={{ gridTemplateColumns: COLS, ["--row-accent" as string]: FUNNEL_STAGE_COLOR[c.funnelStage] }} onClick={() => onOpen(c)}>
                 <div className="crm-cell"><strong>{c.fullName}</strong><small>{c.phone}</small></div>
@@ -805,6 +806,9 @@ function CustomersTable(props: {
                 <div className="crm-cell"><span>{c.owner}</span></div>
                 <div className="crm-cell">
                   {noNext ? <span className="cell-warn">⚠ Chưa có việc</span> : <span className={overdue ? "cell-warn" : ""}>{c.nextAction}{overdue ? " · quá hạn" : ""}</span>}
+                </div>
+                <div className="crm-cell created-cell">
+                  {created ? <><span>{created.date}</span><small>{created.time}</small></> : <span>—</span>}
                 </div>
               </button>
             );

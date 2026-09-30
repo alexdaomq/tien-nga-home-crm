@@ -1452,6 +1452,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .customer-hub-table .crm-cell strong { font-size: 14px; }
 .customer-hub-table .crm-cell small { font-size: 12px; }
 .customer-hub-table .crm-cell span { font-size: 13px; }
+.customer-hub-table .crm-table-head, .customer-hub-table .crm-table-row { min-width: 900px; }
+.customer-hub-table .created-cell span { font-weight: 600; color: #314d49; }
 
 /* Điện thoại: bảng khách -> thẻ, không phải kéo ngang. */
 @media (max-width: 720px) {
@@ -1467,6 +1469,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .customer-hub-table .crm-table-row .crm-cell:nth-child(4),
   .customer-hub-table .crm-table-row .crm-cell:nth-child(6) { order: 4; flex: 0 0 auto; color: var(--muted); }
   .customer-hub-table .crm-table-row .crm-cell:nth-child(5) { display: none; }
+  .customer-hub-table .crm-table-row .created-cell { order: 5; flex: 1 1 100%; display: flex; gap: 5px; font-size: 12px; color: var(--muted); }
+  .customer-hub-table .crm-table-row .created-cell::before { content: "Nhập:"; font-size: 12px; }
+  .customer-hub-table .crm-table-row .created-cell span, .customer-hub-table .crm-table-row .created-cell small { font-size: 12px; font-weight: 500; color: var(--muted); }
   .seg-count { flex-basis: 100%; margin-left: 0; }
 }
 
